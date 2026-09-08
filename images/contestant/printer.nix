@@ -11,6 +11,8 @@
   ];
 
   services.printing.enable = true;
+  services.printing.cups-pdf.enable = true;
+  services.printing.cups-pdf.instances = lib.mkForce { };
 
   environment.etc = {
     "papersize" = {

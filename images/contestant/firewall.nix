@@ -104,8 +104,6 @@ in
       acl allowed_urls dstdomain .${domjudge_url}
       acl allowed_urls dstdomain .hostnames.chipcie.ch.tudelft.nl
       acl allowed_urls dstdomain .pdns.chipcie.ch.tudelft.nl
-      acl allowed_urls dstdomain .bing.com
-      acl allowed_urls dstdomain .youtube.com
       acl allowed_urls dstdomain localhost
 
       acl autologin url_regex ^http://${domjudge_url}/login

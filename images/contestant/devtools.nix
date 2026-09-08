@@ -3,7 +3,7 @@
 {
   environment.systemPackages = with pkgs; [
     vscode
-    neovim-gtk #replaces vim-gtk3?
+    neovim-gtk # replaces vim-gtk3?
     # emacs
     # gedit
     # nano

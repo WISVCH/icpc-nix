@@ -12,13 +12,15 @@
     # Use nixos generators for generating an iso
     nixos-generators.url = "github:nix-community/nixos-generators";
     nixos-generators.inputs.nixpkgs.follows = "nixpkgs";
+
+
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, flake-utils, ... }:
     let
       lib = nixpkgs.lib;
       system = "x86_64-linux";
-
+      vars = import ./vars.nix;
     in
 
     {
@@ -29,7 +31,7 @@
         console = lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = {
-            inherit self inputs system;
+            inherit self inputs system vars;
           };
           modules = [
             ./images/console
@@ -43,7 +45,7 @@
         contestant = lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = {
-            inherit self inputs system;
+            inherit self inputs system vars;
           };
           modules = [
             ./images/contestant
@@ -61,7 +63,7 @@
         system = "x86_64-linux";
         format = "raw";
         specialArgs = {
-          inherit self inputs system;
+          inherit self inputs system vars;
         };
         modules = [
           ./images/common.nix
@@ -77,7 +79,7 @@
         system = "x86_64-linux";
         format = "raw";
         specialArgs = {
-          inherit self inputs system;
+          inherit self inputs system vars;
           diskSize = 20 * 1024;
         };
         modules = [

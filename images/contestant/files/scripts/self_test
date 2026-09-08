@@ -97,7 +97,7 @@ cat /etc/squid/autologin.conf 2>/dev/null | grep "X-DOMjudge" > /dev/null
 if [ $? -eq 0 ]; then
   DJTEAM=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Login/{print $3}' | tr -d '"')
   DJPASS=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Pass/{print $3}' | tr -d '"' | base64 --decode)
-  HTTPCODE=$(curl -s -o /dev/null -w "%{http_code}" -X 'GET' -u "${DJTEAM}:${DJPASS}" 'https://dj.chipcie.ch.tudelft.nl/api/v4/user' -H 'accept: application/json' -L)
+  HTTPCODE=$(curl -s -o /dev/null -w "%{http_code}" -X 'GET' -u "${DJTEAM}:${DJPASS}" 'https://dj.chipcie.ch.tudelft.nl/api/v4/user' -H 'accept: application/json' -L --connect-timeout 5)
   if [ "$HTTPCODE" == "200" ]; then
     echo "${GREEN}Yes${RESET}"
   else
