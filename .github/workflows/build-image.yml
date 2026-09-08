@@ -1,0 +1,117 @@
+name: Build and release image
+
+# Reusable pipeline shared by console-release.yml and contestant-release.yml.
+#
+# Runner requirements (one-time setup on the self-hosted GCP VM, not done here):
+#   - Nix installed (flakes + nix-command enabled) and registered as a
+#     GitHub Actions self-hosted runner labeled "nix-builder".
+#   - `attic` CLI installed, with an Attic server running locally on the
+#     same VM (backed by its own GCS bucket).
+#   - `gcloud` CLI installed and authenticated via Workload Identity
+#     Federation at the org/repo level (see google-github-actions/auth below).
+#
+# Required repository variables (Settings > Secrets and variables > Actions > Variables):
+#   GCP_WORKLOAD_IDENTITY_PROVIDER  - full WIF provider resource name
+#   GCP_SERVICE_ACCOUNT             - service account email to impersonate
+#   GCS_ARTIFACT_BUCKET             - bucket that holds built images
+#   ATTIC_CACHE_NAME                - name of the Attic cache to push to
+#   ATTIC_ENDPOINT                  - Attic server URL (e.g. http://127.0.0.1:8080)
+#   ATTIC_PUBLIC_KEY                - Attic cache's trusted public key
+#
+# Required repository secret:
+#   ATTIC_AUTH_TOKEN                - push token for the Attic cache
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Flake package/nixosConfiguration to build (console or contestant)"
+        required: true
+        type: string
+    secrets:
+      ATTIC_AUTH_TOKEN:
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: [self-hosted, nix-builder]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Log in to Attic cache
+        run: |
+          attic login local "${{ vars.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_AUTH_TOKEN }}"
+          attic use "${{ vars.ATTIC_CACHE_NAME }}"
+
+      - name: Build image
+        run: |
+          nix build ".#${{ inputs.image }}" -L \
+            --extra-substituters "${{ vars.ATTIC_ENDPOINT }}/${{ vars.ATTIC_CACHE_NAME }}" \
+            --extra-trusted-public-keys "${{ vars.ATTIC_PUBLIC_KEY }}"
+
+      - name: Push build closure to Attic
+        run: attic push "${{ vars.ATTIC_CACHE_NAME }}" ./result
+
+      - name: Compute checksum
+        id: checksum
+        run: |
+          SHA256=$(sha256sum result/nixos.img | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload image to GCS
+        id: upload
+        run: |
+          OBJECT="${{ inputs.image }}/${{ github.ref_name }}.img"
+          gcloud storage cp result/nixos.img "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
+          echo "object=$OBJECT" >> "$GITHUB_OUTPUT"
+
+      - name: Generate 30-day signed download URL
+        id: sign
+        run: |
+          SIGNED_URL=$(gcloud storage sign-url \
+            "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}" \
+            --impersonate-service-account="${{ vars.GCP_SERVICE_ACCOUNT }}" \
+            --duration=30d | awk '/Signed URL/{print $NF}')
+          echo "url=$SIGNED_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Determine prerelease status
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#${{ inputs.image }}-}"
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease_flag=$PRERELEASE_FLAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ inputs.image }} ${{ steps.version.outputs.version }}" \
+            --notes "Download (link valid 30 days): ${{ steps.sign.outputs.url }}
+
+          SHA256: \`${{ steps.checksum.outputs.sha256 }}\`" \
+            ${{ steps.version.outputs.prerelease_flag }}
+
+      - name: Garbage collect Nix store
+        run: nix-collect-garbage -d

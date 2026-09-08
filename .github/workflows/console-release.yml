@@ -1,0 +1,13 @@
+name: console release
+
+on:
+  push:
+    tags:
+      - "console-v*"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: console
+    secrets: inherit
