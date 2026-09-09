@@ -87,12 +87,18 @@ create_vm() {
 
   IMPORT_OUTPUT=$(qm importdisk "$vmid" "$image_path" "$STORAGE" --format raw)
   echo "$IMPORT_OUTPUT"
-  UNUSED_REF=$(echo "$IMPORT_OUTPUT" | grep -oE "unused[0-9]+:[^']+" | tail -1)
-  if [ -z "$UNUSED_REF" ]; then
+  # Wording varies by Proxmox version, e.g.:
+  #   "Successfully imported disk as 'unused0:local:104/vm-104-disk-0.raw'"
+  #   "unused0: successfully imported disk 'local:302/vm-302-disk-1.raw'"
+  # Either way, take whatever's inside the single quotes on that line, then
+  # strip a leading "unusedN:" if the version above included it there too.
+  IMPORTED_LINE=$(echo "$IMPORT_OUTPUT" | grep -i "imported disk" | tail -1)
+  RAW=$(echo "$IMPORTED_LINE" | sed -n "s/.*'\([^']*\)'.*/\1/p")
+  if [ -z "$RAW" ]; then
     echo "could not parse the imported disk's volume id from importdisk output" >&2
     exit 1
   fi
-  VOLID="${UNUSED_REF#*:}"
+  VOLID="${RAW#unused[0-9]*:}"
 
   qm set "$vmid" --scsi0 "$VOLID"
   qm set "$vmid" --boot order=scsi0
