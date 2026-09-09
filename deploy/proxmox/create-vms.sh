@@ -42,6 +42,23 @@ case "$STORAGE_TYPE" in
   ;;
 esac
 
+STORAGE_CONTENT=$(awk -v s="$STORAGE" '
+  $0 ~ "^[a-z]+: " s "$" { grab=1; next }
+  grab && /^[a-z]/ { grab=0 }
+  grab && $1 == "content" { print $2 }
+' /etc/pve/storage.cfg)
+case ",$STORAGE_CONTENT," in
+  *,images,*) ;;
+  *)
+    echo "storage pool '$STORAGE' doesn't have the 'images' content type enabled" >&2
+    echo "(currently: ${STORAGE_CONTENT:-none}) - directory storage like the default" >&2
+    echo "'local' pool usually only allows iso/vztmpl/backup out of the box." >&2
+    echo "Enable it with:" >&2
+    echo "  pvesm set $STORAGE --content ${STORAGE_CONTENT:+$STORAGE_CONTENT,}images" >&2
+    exit 1
+  ;;
+esac
+
 create_vm() {
   local vmid="$1" name="$2" image_path="$3"
 
