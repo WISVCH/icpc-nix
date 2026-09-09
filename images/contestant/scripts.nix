@@ -21,18 +21,17 @@ rec {
     disable-turboboost = {
       source = pkgs.fetchurl {
         url = "https://raw.githubusercontent.com/DOMjudge/domjudge-scripts/main/provision-contest/disable-turboboost_ht";
-                  sha256 = "sha256-XtOV0DCfF5OfMz+R0rOJc58gM2nrcvWnCHS4WJLt2UQ=";
+        sha256 = "sha256-XtOV0DCfF5OfMz+R0rOJc58gM2nrcvWnCHS4WJLt2UQ=";
       };
       target = "disable-turboboost_ht";
     };
     submit-client = {
       source = pkgs.fetchurl {
         url = "https://github.com/DOMjudge/domjudge/raw/main/submit/submit";
-        sha256 = "112pnchxl8x01prxam88928m1cabl1yjipmdki3747diq9k2nihb";
+        sha256 = "sha256-qi8ETjPiXeWU/24i+s6mYAcUi8R+mUo8ut9JbzNEBx4=";
       };
     };
   };
-
 
   environment.variables.PATH = "/icpc/scripts/bin:$PATH";
   environment.variables.SUBMITBASEURL = submitbaseurl;
