@@ -30,6 +30,7 @@
         runtimeInputs = with pkgs; [ mtools sbsigntool openssl jq util-linux gnugrep coreutils ];
         text = ''
           export SHIM_DIR="${shim}"
+          export ICPC_NIX_SIGNING_CERT="''${ICPC_NIX_SIGNING_CERT:-${./keys/icpc-nix-release.cer}}"
           exec ${./scripts/sign-image.sh} "$@"
         '';
       };
