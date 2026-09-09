@@ -35,6 +35,12 @@ pkgs.testers.runNixOSTest {
       ../../images/contestant
       ../../images/common.nix
     ];
+
+    # vmtouch.nix's warm-fs-cache service does `find / ... -print` to warm
+    # the page cache on real hardware - pointless (and, empirically, slow
+    # enough to keep multi-user.target from ever becoming active) in a
+    # single-boot test VM.
+    systemd.services.warm-fs-cache.enable = lib.mkForce false;
   };
 
   testScript = ''
