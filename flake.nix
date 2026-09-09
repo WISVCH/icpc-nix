@@ -65,6 +65,7 @@
         format = "raw-efi";
         specialArgs = {
           inherit self inputs system vars;
+          diskSize = 20 * 1024;
         };
         modules = [
           ./images/common.nix

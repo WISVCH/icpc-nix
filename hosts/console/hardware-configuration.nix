@@ -1,8 +1,7 @@
-{ config, lib, pkgs, modulesPath, ... }:
+{ config, lib, pkgs, ... }:
 {
-  imports = [
-    (modulesPath + "/profiles/qemu-guest.nix")
-  ];
+  # qemu-guest.nix now comes from images/common.nix, which this host's
+  # nixosConfigurations entry also imports.
 
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
