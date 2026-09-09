@@ -10,7 +10,7 @@ in
     package = pkgs.firefox-esr;
     profiles = {
       default = {
-        extensions = [ ];
+        # extensions = [ ];
 
         bookmarks = [
           {
