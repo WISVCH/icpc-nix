@@ -45,6 +45,10 @@ on:
         description: "Deploy the built image to its Proxmox staging VM"
         required: true
         type: boolean
+      upload_to_gcs:
+        description: "Upload the built image to the GCS artifact bucket"
+        required: true
+        type: boolean
     # secrets:
     #   ATTIC_AUTH_TOKEN:
     #     required: true
@@ -74,12 +78,14 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate to GCP (Workload Identity Federation)
+        if: ${{ inputs.upload_to_gcs }}
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
+        if: ${{ inputs.upload_to_gcs }}
         uses: google-github-actions/setup-gcloud@v2
 
       # - name: Log in to Attic cache
@@ -102,31 +108,10 @@ jobs:
           SHA256=$(sha256sum result/nixos.img | cut -d' ' -f1)
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
 
-      - name: Upload image to GCS
-        id: upload
-        run: |
-          OBJECT="${{ inputs.image }}/${{ steps.tag.outputs.tag }}.img"
-          gcloud storage cp result/nixos.img "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
-          echo "object=$OBJECT" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PRERELEASE_FLAG=""
-          if [ "${{ inputs.prerelease }}" = "true" ]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-          gh release create "${{ steps.tag.outputs.tag }}" \
-            --target "${{ github.sha }}" \
-            --title "${{ inputs.image }} v${{ inputs.version }}" \
-            --notes "Download: gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}
-
-          SHA256: \`${{ steps.checksum.outputs.sha256 }}\`" \
-            $PRERELEASE_FLAG
-
       - name: Deploy to Proxmox
+        id: deploy
         if: ${{ inputs.deploy }}
+        continue-on-error: true
         env:
           PROXMOX_HOST: ${{ vars.PROXMOX_HOST }}
           PROXMOX_SSH_USER: ${{ vars.PROXMOX_SSH_USER }}
@@ -149,6 +134,34 @@ jobs:
           scp $SSH_OPTS result/nixos.img "${REMOTE}:${STAGED_NAME}"
           ssh $SSH_OPTS "$REMOTE" "sudo /usr/local/sbin/ci-deploy-image.sh '${PROXMOX_VMID}' \"\$HOME/${STAGED_NAME}\""
 
+      - name: Upload image to GCS
+        id: upload
+        if: ${{ inputs.upload_to_gcs }}
+        run: |
+          OBJECT="${{ inputs.image }}/${{ steps.tag.outputs.tag }}.img"
+          gcloud storage cp result/nixos.img "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
+          echo "object=$OBJECT" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          NOTES="SHA256: \`${{ steps.checksum.outputs.sha256 }}\`"
+          if [ "${{ inputs.upload_to_gcs }}" = "true" ]; then
+            NOTES="Download: gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}
+
+          $NOTES"
+          fi
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ inputs.image }} v${{ inputs.version }}" \
+            --notes "$NOTES" \
+            $PRERELEASE_FLAG
+
       - name: Remove built image from Nix store
         # Delete just the image we built (it's the only large, one-off
         # output; the runtime closure is dominated by that one raw disk
@@ -164,3 +177,12 @@ jobs:
             rm -f result
             nix store delete "$STORE_PATH" || echo "::warning::Could not delete $STORE_PATH (still referenced elsewhere?)"
           fi
+
+      - name: Fail if Proxmox deploy failed
+        # The deploy step uses continue-on-error so a failed deploy doesn't
+        # block the GCS upload/release/cleanup steps above. Surface it here,
+        # last, so the job still reports failure overall.
+        if: ${{ steps.deploy.outcome == 'failure' }}
+        run: |
+          echo "::error::Deploy to Proxmox failed; see the 'Deploy to Proxmox' step above."
+          exit 1

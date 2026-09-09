@@ -30,6 +30,11 @@ on:
         required: true
         type: boolean
         default: false
+      upload_to_gcs:
+        description: "Upload the built image to the GCS artifact bucket"
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -39,4 +44,5 @@ jobs:
       version: ${{ inputs.version }}
       prerelease: ${{ inputs.prerelease }}
       deploy: ${{ inputs.deploy }}
+      upload_to_gcs: ${{ inputs.upload_to_gcs }}
     secrets: inherit
