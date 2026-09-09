@@ -1,6 +1,14 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, modulesPath, ... }:
 
 {
+  imports = [
+    # Pulls in virtio_scsi/virtio_blk (among others) for the initrd, so the
+    # root partition (found by label) is visible when these images run as
+    # Proxmox VMs (scsi0 on a virtio-scsi-pci controller). Harmless on real
+    # hardware - these modules just never get used there.
+    (modulesPath + "/profiles/qemu-guest.nix")
+  ];
+
   boot.kernelParams = [ "console=tty0" "consoleblank=0" "biosdevname=0" "net.ifnames=0" ];
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.permittedInsecurePackages = [ "squid-6.10" ];
