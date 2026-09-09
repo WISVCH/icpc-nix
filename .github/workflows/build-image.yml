@@ -1,6 +1,6 @@
 name: Build and release image
 
-# Reusable pipeline shared by console-release.yml and contestant-release.yml.
+# Reusable pipeline invoked by release.yml.
 #
 # Runner requirements (one-time setup on the self-hosted GCP VM, not done here):
 #   - Nix installed (flakes + nix-command enabled) and registered as a
@@ -14,11 +14,16 @@ name: Build and release image
 #   GCP_WORKLOAD_IDENTITY_PROVIDER  - full WIF provider resource name
 #   GCP_SERVICE_ACCOUNT             - service account email to impersonate
 #   GCS_ARTIFACT_BUCKET             - bucket that holds built images
+#   PROXMOX_HOST                    - hostname/IP of the Proxmox host
+#   PROXMOX_SSH_USER                - scoped deploy user, see deploy/proxmox/setup.sh
+#   PROXMOX_CONSOLE_VMID            - VMID of the console staging VM
+#   PROXMOX_CONTESTANT_VMID         - VMID of the contestant staging VM
 #   # ATTIC_CACHE_NAME              - name of the Attic cache to push to
 #   # ATTIC_ENDPOINT                - Attic server URL (e.g. http://127.0.0.1:8080)
 #   # ATTIC_PUBLIC_KEY              - Attic cache's trusted public key
 #
-# Required repository secret:
+# Required repository secrets:
+#   PROXMOX_SSH_KEY                 - private key for PROXMOX_SSH_USER
 #   # ATTIC_AUTH_TOKEN              - push token for the Attic cache
 
 on:
@@ -28,6 +33,18 @@ on:
         description: "Flake package/nixosConfiguration to build (console or contestant)"
         required: true
         type: string
+      version:
+        description: "Version to release, e.g. 1.4.0 (tag will be <image>-v<version>)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: true
+        type: boolean
+      deploy:
+        description: "Deploy the built image to its Proxmox staging VM"
+        required: true
+        type: boolean
     # secrets:
     #   ATTIC_AUTH_TOKEN:
     #     required: true
@@ -45,6 +62,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Compute release tag
+        id: tag
+        run: |
+          TAG="${{ inputs.image }}-v${{ inputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate to GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
@@ -78,38 +105,46 @@ jobs:
       - name: Upload image to GCS
         id: upload
         run: |
-          OBJECT="${{ inputs.image }}/${{ github.ref_name }}.img"
+          OBJECT="${{ inputs.image }}/${{ steps.tag.outputs.tag }}.img"
           gcloud storage cp result/nixos.img "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
           echo "object=$OBJECT" >> "$GITHUB_OUTPUT"
-
-      # During testing, it is better to download directly from GCP instead of already creating the download link.
-      # - name: Generate 7-day signed download URL
-      #   id: sign
-      #   run: |
-      #     SIGNED_URL=$(gcloud storage sign-url \
-      #       "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}" \
-      #       --impersonate-service-account="${{ vars.GCP_SERVICE_ACCOUNT }}" \
-      #       --duration=7d | awk '/Signed URL/{print $NF}')
-      #     echo "url=$SIGNED_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Determine prerelease status
-        id: version
-        run: |
-          VERSION="${GITHUB_REF_NAME#${{ inputs.image }}-}"
-          PRERELEASE_FLAG=""
-          if [[ "$VERSION" == *-* ]]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "prerelease_flag=$PRERELEASE_FLAG" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ inputs.image }} ${{ steps.version.outputs.version }}" \
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ inputs.image }} v${{ inputs.version }}" \
             --notes "Download: gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}
 
           SHA256: \`${{ steps.checksum.outputs.sha256 }}\`" \
-            ${{ steps.version.outputs.prerelease_flag }}
+            $PRERELEASE_FLAG
+
+      - name: Deploy to Proxmox
+        if: ${{ inputs.deploy }}
+        env:
+          PROXMOX_HOST: ${{ vars.PROXMOX_HOST }}
+          PROXMOX_SSH_USER: ${{ vars.PROXMOX_SSH_USER }}
+          PROXMOX_VMID: ${{ inputs.image == 'console' && vars.PROXMOX_CONSOLE_VMID || vars.PROXMOX_CONTESTANT_VMID }}
+          PROXMOX_SSH_KEY: ${{ secrets.PROXMOX_SSH_KEY }}
+        run: |
+          KEYFILE="$(mktemp)"
+          trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s\n' "$PROXMOX_SSH_KEY" > "$KEYFILE"
+          chmod 600 "$KEYFILE"
+
+          SSH_OPTS="-i $KEYFILE -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+          REMOTE="${PROXMOX_SSH_USER}@${PROXMOX_HOST}"
+          STAGED_NAME="staging-${{ inputs.image }}.raw"
+
+          scp $SSH_OPTS result/nixos.img "${REMOTE}:${STAGED_NAME}"
+          ssh $SSH_OPTS "$REMOTE" "sudo /usr/local/sbin/ci-deploy-image.sh '${PROXMOX_VMID}' \"\$HOME/${STAGED_NAME}\""
+
+      - name: Garbage collect Nix store
+        if: always()
+        run: nix-collect-garbage -d

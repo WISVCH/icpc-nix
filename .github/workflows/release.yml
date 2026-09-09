@@ -1,0 +1,42 @@
+name: Release image
+
+# Manually build a console/contestant image, cut a GitHub release for it,
+# and optionally deploy it straight to that image's Proxmox staging VM.
+# Replaces the old console-v*/contestant-v* tag-push triggers: this
+# workflow creates the release tag itself, pointing at whichever branch
+# you dispatch it from.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image to build"
+        required: true
+        type: choice
+        options:
+          - console
+          - contestant
+      version:
+        description: "Version to release, e.g. 1.4.0 (tag will be <image>-v<version>)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: true
+        type: boolean
+        default: false
+      deploy:
+        description: "Deploy the built image to its Proxmox staging VM"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: ${{ inputs.image }}
+      version: ${{ inputs.version }}
+      prerelease: ${{ inputs.prerelease }}
+      deploy: ${{ inputs.deploy }}
+    secrets: inherit
