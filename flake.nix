@@ -1,11 +1,12 @@
 {
   inputs = {
     # Use unstable for flakes
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
     # Add home-manager
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -13,21 +14,40 @@
     nixos-generators.url = "github:nix-community/nixos-generators";
     nixos-generators.inputs.nixpkgs.follows = "nixpkgs";
 
-
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, flake-utils, ... }:
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      nixpkgs-unstable,
+      home-manager,
+      flake-utils,
+      ...
+    }:
     let
       lib = nixpkgs.lib;
       system = "x86_64-linux";
       vars = import ./vars.nix;
       pkgs = import nixpkgs { inherit system; };
+      pkgs-unstable = import nixpkgs-unstable { inherit system; };
 
-      shim = import ./packages/shim.nix { inherit pkgs; inherit (pkgs) lib; };
+      shim = import ./packages/shim.nix {
+        inherit pkgs;
+        inherit (pkgs) lib;
+      };
 
       signImage = pkgs.writeShellApplication {
         name = "sign-image";
-        runtimeInputs = with pkgs; [ mtools sbsigntool openssl jq util-linux gnugrep coreutils ];
+        runtimeInputs = with pkgs; [
+          mtools
+          sbsigntool
+          openssl
+          jq
+          util-linux
+          gnugrep
+          coreutils
+        ];
         text = ''
           export SHIM_DIR="${shim}"
           export ICPC_NIX_SIGNING_CERT="''${ICPC_NIX_SIGNING_CERT:-${./keys/icpc-nix-release.cer}}"
@@ -37,18 +57,22 @@
 
       mkBuildSignedApp = image: {
         type = "app";
-        program = toString (pkgs.writeShellApplication {
-          name = "build-signed-${image}";
-          runtimeInputs = [ signImage ];
-          text = ''
-            nix build ".#${image}" -L
-            OUT="./${image}-signed.img"
-            cp --no-preserve=mode,ownership result/nixos.img "$OUT"
-            chmod +w "$OUT"
-            sign-image "$OUT"
-            echo "Signed image: $OUT"
-          '';
-        }) + "/bin/build-signed-${image}";
+        program =
+          toString (
+            pkgs.writeShellApplication {
+              name = "build-signed-${image}";
+              runtimeInputs = [ signImage ];
+              text = ''
+                nix build ".#${image}" -L
+                OUT="./${image}-signed.img"
+                cp --no-preserve=mode,ownership result/nixos.img "$OUT"
+                chmod +w "$OUT"
+                sign-image "$OUT"
+                echo "Signed image: $OUT"
+              '';
+            }
+          )
+          + "/bin/build-signed-${image}";
       };
     in
 
@@ -60,7 +84,13 @@
         console = lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = {
-            inherit self inputs system vars;
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
           };
           modules = [
             ./images/console
@@ -75,7 +105,13 @@
         contestant = lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = {
-            inherit self inputs system vars;
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
           };
           modules = [
             ./images/contestant
@@ -93,7 +129,13 @@
         system = "x86_64-linux";
         format = "raw-efi";
         specialArgs = {
-          inherit self inputs system vars;
+          inherit
+            self
+            inputs
+            system
+            vars
+            pkgs-unstable
+            ;
           diskSize = 20 * 1024;
         };
         modules = [
@@ -110,7 +152,13 @@
         system = "x86_64-linux";
         format = "raw-efi";
         specialArgs = {
-          inherit self inputs system vars;
+          inherit
+            self
+            inputs
+            system
+            vars
+            pkgs-unstable
+            ;
           diskSize = 20 * 1024;
         };
         modules = [
