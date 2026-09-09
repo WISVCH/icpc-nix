@@ -113,6 +113,3 @@ jobs:
 
           SHA256: \`${{ steps.checksum.outputs.sha256 }}\`" \
             ${{ steps.version.outputs.prerelease_flag }}
-
-      - name: Garbage collect Nix store
-        run: nix-collect-garbage -d
