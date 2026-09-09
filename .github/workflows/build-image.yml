@@ -24,6 +24,7 @@ name: Build and release image
 #
 # Required repository secrets:
 #   PROXMOX_SSH_KEY                 - private key for PROXMOX_SSH_USER
+#   ICPC_NIX_SIGNING_KEY            - release private key, see docs/signing-key.md
 #   # ATTIC_AUTH_TOKEN              - push token for the Attic cache
 
 on:
@@ -93,9 +94,24 @@ jobs:
       #     attic login local "${{ vars.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_AUTH_TOKEN }}"
       #     attic use "${{ vars.ATTIC_CACHE_NAME }}"
 
-      - name: Build image
+      - name: Build and sign image
+        # Builds via `nix build` internally, then signs the copy in place
+        # with the release key (docs/signing-key.md) via scripts/sign-image.sh
+        # (mtools-based ESP write, no loop-mount, no root; the key never
+        # becomes a Nix store input, see docs/adr/0002-sign-images-post-build.md).
+        # This step fails if signing or its own sbsign/sbverify check fails,
+        # which is the "did signing actually work" signal for this pipeline
+        # (SB isn't enforced on the staging VM, so a boot success alone
+        # wouldn't prove it, see docs/adr/0001-secure-boot-strategy.md).
+        env:
+          ICPC_NIX_SIGNING_KEY_CONTENT: ${{ secrets.ICPC_NIX_SIGNING_KEY }}
         run: |
-          nix build ".#${{ inputs.image }}" -L
+          KEYFILE="$(mktemp)"
+          trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s\n' "$ICPC_NIX_SIGNING_KEY_CONTENT" > "$KEYFILE"
+          chmod 600 "$KEYFILE"
+
+          ICPC_NIX_SIGNING_KEY="$KEYFILE" nix run ".#build-signed-${{ inputs.image }}"
           # --extra-substituters "${{ vars.ATTIC_ENDPOINT }}/${{ vars.ATTIC_CACHE_NAME }}" \
           # --extra-trusted-public-keys "${{ vars.ATTIC_PUBLIC_KEY }}"
 
@@ -105,7 +121,7 @@ jobs:
       - name: Compute checksum
         id: checksum
         run: |
-          SHA256=$(sha256sum result/nixos.img | cut -d' ' -f1)
+          SHA256=$(sha256sum "${{ inputs.image }}-signed.img" | cut -d' ' -f1)
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Proxmox
@@ -131,7 +147,7 @@ jobs:
           # remote copy. Remove any leftover staging file from a previous
           # failed run first, since scp can't overwrite a read-only file.
           ssh $SSH_OPTS "$REMOTE" "rm -f \"\$HOME/${STAGED_NAME}\""
-          scp $SSH_OPTS result/nixos.img "${REMOTE}:${STAGED_NAME}"
+          scp $SSH_OPTS "${{ inputs.image }}-signed.img" "${REMOTE}:${STAGED_NAME}"
           ssh $SSH_OPTS "$REMOTE" "sudo /usr/local/sbin/ci-deploy-image.sh '${PROXMOX_VMID}' \"\$HOME/${STAGED_NAME}\""
 
       - name: Upload image to GCS
@@ -139,7 +155,7 @@ jobs:
         if: ${{ inputs.upload_to_gcs }}
         run: |
           OBJECT="${{ inputs.image }}/${{ steps.tag.outputs.tag }}.img"
-          gcloud storage cp result/nixos.img "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
+          gcloud storage cp "${{ inputs.image }}-signed.img" "gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${OBJECT}"
           echo "object=$OBJECT" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
@@ -177,6 +193,11 @@ jobs:
             rm -f result
             nix store delete "$STORE_PATH" || echo "::warning::Could not delete $STORE_PATH (still referenced elsewhere?)"
           fi
+          # The signed copy lives outside the Nix store (scripts/sign-image.sh
+          # writes it as a plain workspace file); this runner is self-hosted
+          # and persistent, so clean it up explicitly rather than relying on
+          # per-job workspace resets.
+          rm -f "${{ inputs.image }}-signed.img"
 
       - name: Fail if Proxmox deploy failed
         # The deploy step uses continue-on-error so a failed deploy doesn't
