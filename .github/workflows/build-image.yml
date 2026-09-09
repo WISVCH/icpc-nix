@@ -109,7 +109,8 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "${{ inputs.image }} ${{ steps.version.outputs.version }}" \
-            --notes "Download (link valid 7 days): $}} steps.sign.outputs.url {{
+            --notes "Download: gs://${{ vars.GCS_ARTIFACT_BUCKET }}/${{ steps.upload.outputs.object }}
+
           SHA256: \`${{ steps.checksum.outputs.sha256 }}\`" \
             ${{ steps.version.outputs.prerelease_flag }}
 
