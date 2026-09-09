@@ -38,7 +38,7 @@ VOLID=$(echo "$DISK_LINE" | cut -d: -f2- | cut -d, -f1 | xargs)
 DISK_PATH=$(pvesm path "$VOLID")
 
 NEW_SIZE=$(stat -c %s "$IMAGE_PATH")
-OLD_SIZE=$(stat -c %s "$DISK_PATH")
+OLD_SIZE=$(stat -L -c %s "$DISK_PATH")
 if [ "$NEW_SIZE" -ne "$OLD_SIZE" ]; then
   echo "refusing to deploy: new image is ${NEW_SIZE} bytes, existing disk ($DISK_PATH) is ${OLD_SIZE} bytes" >&2
   exit 1
