@@ -3,7 +3,7 @@
 {
   environment.systemPackages = with pkgs; [
     htop
-    dstat
+    # dstat
     iotop
     sysstat
     nettools
