@@ -8,6 +8,7 @@ name: Check
 
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   check:
@@ -27,3 +28,21 @@ jobs:
 
       - name: Build contestant system closure
         run: nix build .#nixosConfigurations.contestant.config.system.build.toplevel -L --no-link
+
+  vm-tests:
+    # Separate from `check` so a failing nixosTest (a real VM boot + service
+    # checks, slower than the steps above) never blocks that job, and never
+    # blocks deploy either - release.yml/build-image.yml don't depend on
+    # this workflow at all. Manual-only (not run on every push): building
+    # the full contestant image for a VM boot is slow.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, nix-builder]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run contestant VM tests
+        run: nix build .#contestant-vm-tests -L

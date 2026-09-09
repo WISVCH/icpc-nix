@@ -173,6 +173,11 @@
       ## nix build .#shim
       packages.x86_64-linux.shim = shim;
 
+      ## nix build .#contestant-vm-tests
+      packages.x86_64-linux.contestant-vm-tests = import ./tests/contestant {
+        inherit pkgs self inputs system vars;
+      };
+
       ## nix run .#build-signed-console / .#build-signed-contestant
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";
       apps.x86_64-linux.build-signed-contestant = mkBuildSignedApp "contestant";
