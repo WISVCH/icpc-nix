@@ -1,0 +1,2 @@
+[contestants]
+vm host=pc1 team_id=1 ansible_host=127.0.0.1 room=TZ-1 teamname=TESTEAM domjudge_user=team10 domjudge_pass=bCIJlBgDP5hk ansible_port=10022 

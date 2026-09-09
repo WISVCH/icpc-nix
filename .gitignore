@@ -1,2 +1,4 @@
 # Ignore NixOS build output
 result
+
+*.img

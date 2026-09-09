@@ -1,0 +1,4 @@
+{
+    "python.pythonPath": "/usr/bin/pypy3",
+    "python.defaultInterpreterPath": "/usr/bin/pypy3"
+}

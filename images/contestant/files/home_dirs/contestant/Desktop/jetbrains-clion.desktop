@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CLion
+Icon=/opt/clion/bin/clion.svg
+Exec="/opt/clion/bin/clion.sh" %f
+Comment=CLion integrated C/C++ IDE (UDTC)
+Categories=Development;IDE;
+Terminal=false
+

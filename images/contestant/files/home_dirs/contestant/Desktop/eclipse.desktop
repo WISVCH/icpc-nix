@@ -1,0 +1,15 @@
+[Desktop Entry]
+BinaryPattern=
+Protocols=
+Comment=Java/C/C++/Python Editor
+Name=Eclipse
+Exec=/usr/bin/eclipse %f
+Icon=/usr/lib/eclipse/icon.xpm
+TerminalOptions=
+Path=
+Type=Application
+Terminal=0
+MapNotify=false
+Encoding=UTF-8
+X-Desktop-File-Install-Version=0.1
+Categories=Application;Development;X-Red-Hat-Base;

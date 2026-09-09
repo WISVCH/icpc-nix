@@ -1,0 +1,12 @@
+
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Reset Team Account
+Comment=
+Exec=sudo /icpc/scripts/deleteUser.sh
+Icon=edit-clear
+Path=
+Terminal=true
+StartupNotify=false
+GenericName=

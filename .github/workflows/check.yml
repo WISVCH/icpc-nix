@@ -1,0 +1,29 @@
+name: Check
+
+# Validates that the flake evaluates and both system configurations build,
+# so a commit is known-good before it gets tagged for an image release.
+#
+# Runner requirements: same self-hosted "nix-builder" runner used by
+# build-image.yml (Nix with flakes + nix-command enabled).
+
+on:
+  push:
+
+jobs:
+  check:
+    runs-on: [self-hosted, nix-builder]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flake check
+        run: nix flake check -L
+
+      - name: Build console system closure
+        run: nix build .#nixosConfigurations.console.config.system.build.toplevel -L --no-link
+
+      - name: Build contestant system closure
+        run: nix build .#nixosConfigurations.contestant.config.system.build.toplevel -L --no-link

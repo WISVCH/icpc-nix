@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+
+RED=""
+GREEN=""
+BLUE=""
+ORANGE=""
+RESET=""
+
+# check if stdout is a terminal...
+if test -t 1; then
+
+    # see if it supports colors...
+    ncolors=$(tput colors)
+
+    if test -n "$ncolors" && test $ncolors -ge 8; then
+      RED=$(tput setaf 1)
+      GREEN=$(tput setaf 2)
+      BLUE=$(tput bold; tput setaf 4)
+      ORANGE=$(tput setaf 3)
+      RESET=$(tput sgr0)
+    fi
+fi
+
+# check that cups is running
+function print_ok() {
+  echo "${GREEN}Pass${RESET}"
+}
+function print_fail() {
+  echo "${RED}Fail${RESET}"
+}
+function print_check() {
+  printf "%-60s" "$1"
+}
+function print_version() {
+  print_check "$1"
+  shift
+  VERSION=$($@ 2>&1| grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?([_-p][0-9]+)?' |awk '{print length, $0}'|sort -rn |cut -d " " -f2- | head -n1)
+  UNKNOWN="${RED}Unknown${RESET}"
+  VERSION="${VERSION:-$UNKNOWN}"
+  echo $VERSION
+}
+function print_first_version() {
+  print_check "$1"
+  shift
+  VERSION=$($@ 2>&1| grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?([_-p][0-9]+)?' | head -n1)
+  UNKNOWN="${RED}Unknown${RESET}"
+  VERSION="${VERSION:-$UNKNOWN}"
+  echo $VERSION
+}
+function print_fourth_version() {
+  print_check "$1"
+  shift
+  VERSION=$($@ 2>&1| grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?([_-p][0-9]+)?' | head -n4 | tail -1)
+  UNKNOWN="${RED}Unknown${RESET}"
+  VERSION="${VERSION:-$UNKNOWN}"
+  echo $VERSION
+}
+function check_return() {
+  if [ $1 -eq 0 ]; then
+    print_ok
+  else
+    print_fail
+  fi
+}
+function check_service() {
+  systemctl is-active $1 >/dev/null 2>&1
+  check_return $?
+}
+
+echo "${BLUE}System Configuration${RESET}"
+print_check "IPv4 address"
+IP="$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')"
+echo $IP
+print_check "Hostname"
+HOSTNAME="$(hostname)"
+echo $HOSTNAME
+print_check "Timezone"
+TIMEZONE="$(timedatectl show -p Timezone 2>/dev/null)"
+if [ $TIMEZONE = "Timezone=Europe/Amsterdam" ]; then
+  TIMEZONE="${GREEN}${TIMEZONE}${RESET}"
+else
+  TIMEZONE="${RED}${TIMEZONE}${RESET}"
+fi
+echo $TIMEZONE
+print_check "Team Name"
+TEAMNAME="$(cat /icpc/TEAM 2>/dev/null)"
+NOTEAM="${RED}Not Set${RESET}"
+TEAMNAME="${TEAMNAME:-$NOTEAM}"
+echo $TEAMNAME
+print_check "Room"
+ROOM="$(cat /icpc/ROOM 2>/dev/null)"
+NOROOM="${RED}Not Set${RESET}"
+ROOM="${ROOM:-$NOROOM}"
+echo $ROOM
+print_check "DOMjudge Autologin Configured"
+cat /etc/squid/autologin.conf 2>/dev/null | grep "X-DOMjudge" > /dev/null
+if [ $? -eq 0 ]; then
+  DJTEAM=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Login/{print $3}' | tr -d '"')
+  DJPASS=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Pass/{print $3}' | tr -d '"' | base64 --decode)
+  HTTPCODE=$(curl -s -o /dev/null -w "%{http_code}" -X 'GET' -u "${DJTEAM}:${DJPASS}" 'https://dj.chipcie.ch.tudelft.nl/api/v4/user' -H 'accept: application/json' -L --connect-timeout 5)
+  if [ "$HTTPCODE" == "200" ]; then
+    echo "${GREEN}Yes${RESET}"
+  else
+    echo "${RED}ERROR ${HTTPCODE}${RESET}"
+  fi
+  print_check "    Team Login"
+  echo $DJTEAM
+else
+  echo "${ORANGE}No${RESET}"
+fi
+
+echo
+echo "${BLUE}Printing Configuration${RESET}"
+print_check "Making sure cups is running"
+check_service 'cups'
+PRINTERS=$(lpstat -v 2>/dev/null| grep -v ContestPrinter | sed -e 's|socket://||' -e 's|:||' | awk '{printf "    %-56s%s\n", $3, $4}')
+NUMPRINTERS=$(echo -n "$PRINTERS" | grep -c Printer)
+print_check "Checking there are printers present"
+if [ "$NUMPRINTERS" -eq "0" ]; then
+  print_fail
+else
+  print_ok
+fi
+echo "Configured Printers:"
+echo "$PRINTERS"
+
+echo
+echo "${BLUE}Connectivity Test${RESET}"
+print_check "Checking if the firewall is enabled"
+check_service 'nftables'
+
+print_check "Making sure the squid proxy is running"
+check_service 'squid'
+
+print_check "Testing access to google is blocked with a proxy error"
+wget -e use_proxy=yes --timeout=5 -t 1 -e http_proxy=127.0.0.1:3128 -O- http://google.com 2>/dev/null | grep "<h1>Access Denied</h1>" > /dev/null
+check_return $?
+
+print_check "Testing access to DOMjudge is successful with proxy"
+wget -e use_proxy=yes --timeout=5 -t 1 -e http_proxy=127.0.0.1:3128 -O- --no-check-certificate dj.chipcie.ch.tudelft.nl 2>/dev/null | grep "DOMjudge" > /dev/null
+check_return $?
+
+print_check "Testing direct internet access is disabled"
+su - contestant -c 'wget -T 5 -t 1 -e use_proxy=no -O- http://google.com >/dev/null 2>&1' 2>/dev/null
+if [ $? -eq 0 ]; then
+  print_fail
+else
+  print_ok
+fi
+
+echo
+echo "${BLUE}Compiler Versions${RESET}"
+# ERLANG_VERSION_OUT=$(erl -eval '{ok, Version} = file:read_file(filename:join([code:root_dir(), "releases", erlang:system_info(otp_release), "OTP_VERSION"])), io:fwrite(Version), halt().' -noshell)
+# print_version       "ada"       "gnat --version"
+print_first_version "c"         "gcc --version"
+print_first_version "c++"       "g++ --version"
+# print_version       "c#"        "mono --version"
+# print_version       "clojure"   "clojure -e (clojure-version)"
+# print_version       "dart"      "dart --version"
+# print_version       "D"         "gdc --version"
+# print_version       "erlang"    "echo $ERLANG_VERSION_OUT"
+# print_version       "f#"        "fsharpc"
+# print_version       "fortran"   "gfortran --version"
+# print_version       "go"        "go version"
+# print_version       "gccgo"     "gccgo --version"
+# print_version       "groovy"    "groovy -version"
+# print_version       "haskell"   "ghc --version"
+print_first_version "java"      "java -version"
+# print_version       "lua"       "lua -v"
+# print_version       "js"        "nodejs --version"
+print_first_version "kotlin"    "kotlin -version"
+# print_version       "nim"       "nim --version"
+# print_version       "ocaml"     "ocaml -version"
+# print_version       "pascal"    "fpc -version"
+# print_version       "prolog"    "swipl --version"
+# print_version       "python 2"  "python --version"
+# print_fourth_version "pypy"      "pypy --version"
+print_version       "python 3"  "python3 --version"
+print_fourth_version "pypy3"      "pypy3 --version"
+# print_version       "ruby"      "ruby --version"
+# print_version       "rust"      "rustc --version"
+# print_version       "scala"     "scala -version"
+
+echo
+echo "${BLUE}Image Details${RESET}"
+VERSIONINFO=$(cat /icpc/version 2>/dev/null)
+VERSIONDEFAULT="${RED}No version info found!${DEFAULT}"
+echo -e "${VERSIONINFO:-$VERSIONDEFAULT}"
+

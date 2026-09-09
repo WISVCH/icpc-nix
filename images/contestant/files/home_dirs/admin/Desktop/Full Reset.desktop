@@ -1,0 +1,11 @@
+
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Full Reset
+Comment=Wipe team account, and run setup again on firstlogin
+Exec=sudo /icpc/scripts/full_reset.sh
+Icon=dialog-warning
+Path=
+Terminal=true
+StartupNotify=false

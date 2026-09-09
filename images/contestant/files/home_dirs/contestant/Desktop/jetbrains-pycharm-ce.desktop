@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=PyCharm
+Icon=/usr/lib/pycharm/bin/pycharm.png
+Exec="/usr/lib/pycharm/bin/pycharm.sh" %f
+Comment=PyCharm Community Edition (UDTC)
+Categories=Development;IDE;
+Terminal=false
+

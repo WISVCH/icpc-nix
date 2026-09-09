@@ -1,0 +1,28 @@
+{
+
+  "description": "Add autologing to domjudge through x-headers",
+  "manifest_version": 2,
+  "name": "DJ autologin",
+  "version": "1.0",
+  "homepage_url": "https://github.com/WISVCH/icpc-env",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dj-addon@chipcie.ch.tudelft.nl"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>",
+    "tabs"
+  ],
+  "background": {
+    "scripts": [
+      "config.js",
+      "background.js"
+    ]
+  }
+
+}

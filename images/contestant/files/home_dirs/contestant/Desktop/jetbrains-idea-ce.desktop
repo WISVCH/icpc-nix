@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Idea
+Icon=/usr/lib/idea/bin/idea.png
+Exec="/usr/lib/idea/bin/idea.sh" %f
+Comment=IntelliJ IDEA Community Edition (UDTC)
+Categories=Development;IDE;Java
+Terminal=false
+

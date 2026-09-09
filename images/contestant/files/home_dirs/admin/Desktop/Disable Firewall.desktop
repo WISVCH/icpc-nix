@@ -1,0 +1,11 @@
+
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Disable Firewall
+Comment=
+Exec=sudo /icpc/scripts/disableFirewall.sh
+Icon=channel-insecure-symbolic
+Path=
+Terminal=false
+StartupNotify=false
