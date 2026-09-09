@@ -26,9 +26,9 @@
     Storage=volatile
   '';
 
-  systemd.extraConfig = ''
-    ShowStatus=no
-  '';
+  # systemd.extraConfig = ''
+  #   ShowStatus=no
+  # '';
 
   time.timeZone = "Europe/Amsterdam";
 
