@@ -142,6 +142,10 @@ jobs:
           REMOTE="${PROXMOX_SSH_USER}@${PROXMOX_HOST}"
           STAGED_NAME="staging-${{ inputs.image }}.raw"
 
+          # Nix store outputs are read-only; scp preserves that mode on the
+          # remote copy. Remove any leftover staging file from a previous
+          # failed run first, since scp can't overwrite a read-only file.
+          ssh $SSH_OPTS "$REMOTE" "rm -f \"\$HOME/${STAGED_NAME}\""
           scp $SSH_OPTS result/nixos.img "${REMOTE}:${STAGED_NAME}"
           ssh $SSH_OPTS "$REMOTE" "sudo /usr/local/sbin/ci-deploy-image.sh '${PROXMOX_VMID}' \"\$HOME/${STAGED_NAME}\""
 
