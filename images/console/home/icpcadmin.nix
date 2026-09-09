@@ -19,7 +19,7 @@ let
 
     "icpc-playbooks" = {
       source = builtins.fetchGit {
-        url = "ssh://git@github.com/wisvch/icpc-playbooks.git";
+        url = "ssh://git@github.com-playbooks/wisvch/icpc-playbooks.git";
         ref = "main";
         rev = "0a1399bd61dec66836c834815b1f448ce6609f1c";
         submodules = true;
