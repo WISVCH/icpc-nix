@@ -23,7 +23,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 STORAGE="${STORAGE:-local}"
-BRIDGE="${BRIDGE:-vmbr0}"
+BRIDGE="${BRIDGE:-vmbr1}"
 MEMORY_MB="${MEMORY_MB:-4096}"
 CORES="${CORES:-2}"
 
