@@ -107,7 +107,7 @@ in
       acl autologin url_regex ^http://${domjudge_url}/login
       acl autologin url_regex ^https://${domjudge_url}/login
 
-      include /etc/squid/autologin.conf
+      # include /etc/squid/autologin.conf
 
       http_access allow allowed_urls
       http_access deny all
