@@ -29,7 +29,6 @@
     tmux
 
     # Just for Josh :)
-    gitkraken
     just
     nh
   ];
