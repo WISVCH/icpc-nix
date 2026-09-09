@@ -36,6 +36,7 @@
           modules = [
             ./images/console
             ./images/common.nix
+            ./hosts/console/hardware-configuration.nix
             {
               system.stateVersion = "23.11";
             }
