@@ -52,7 +52,7 @@ SSH_DIR="/home/$DEPLOY_USER/.ssh"
 install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$SSH_DIR"
 
 if [ ! -f "$KEY_PATH" ]; then
-  ssh-keygen -t ed25519 -N "" -C "chipcie-nix CI deploy" -f "$KEY_PATH"
+  ssh-keygen -t ed25519 -N "" -C "icpc-nix CI deploy" -f "$KEY_PATH"
 fi
 
 touch "$SSH_DIR/authorized_keys"

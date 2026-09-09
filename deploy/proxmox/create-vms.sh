@@ -105,7 +105,7 @@ create_vm() {
 
   qm set "$vmid" --scsi0 "$VOLID"
   qm set "$vmid" --boot order=scsi0
-  qm set "$vmid" --description "chipcie-nix $name staging VM - managed by CI, see deploy/proxmox/ci-deploy-image.sh"
+  qm set "$vmid" --description "icpc-nix $name staging VM - managed by CI, see deploy/proxmox/ci-deploy-image.sh"
 
   echo "VM $vmid ($name) ready. Disk file: $(pvesm path "$VOLID")"
 }
