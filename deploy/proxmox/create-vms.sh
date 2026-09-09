@@ -11,10 +11,12 @@
 # size, that check will (correctly) refuse to deploy until you resize
 # or recreate the VM's disk deliberately.
 #
-# Requires a directory/file-based storage pool (e.g. Proxmox's default
-# "local") — LVM-thin/ZFS volumes aren't plain files, which the deploy
-# step's disk-overwrite approach depends on. The script checks this and
-# refuses to proceed on an unsupported storage type.
+# Works with directory storage (e.g. Proxmox's default "local") or
+# LVM-thin (e.g. "local-lvm") — the deploy step's disk-overwrite approach
+# just needs `pvesm path` to resolve to something it can write raw bytes
+# into directly, which holds for a plain file (dir/nfs/cifs) or a block
+# device (lvmthin/lvm) alike. The script checks the pool is one of these
+# and refuses to proceed otherwise.
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -33,11 +35,12 @@ if [ -z "$STORAGE_TYPE" ]; then
   exit 1
 fi
 case "$STORAGE_TYPE" in
-  dir|nfs|cifs) ;;
+  dir|nfs|cifs|lvmthin|lvm) ;;
   *)
-    echo "storage pool '$STORAGE' is type '$STORAGE_TYPE', not directory/file-based." >&2
-    echo "The CI deploy step overwrites the VM's disk file directly, which needs" >&2
-    echo "dir/nfs/cifs storage. Pick a different pool (STORAGE=... $0) or set one up." >&2
+    echo "storage pool '$STORAGE' is type '$STORAGE_TYPE', which this script hasn't" >&2
+    echo "been checked against. It needs \`pvesm path\` to resolve to something raw" >&2
+    echo "bytes can be written into directly (a file or a block device) - dir, nfs," >&2
+    echo "cifs, lvmthin and lvm all qualify. Pick a different pool (STORAGE=... $0)." >&2
     exit 1
   ;;
 esac

@@ -62,6 +62,7 @@ fi
 
 echo "writing new image to $DISK_PATH"
 cp "$IMAGE_PATH" "$DISK_PATH"
+sync
 rm -f "$IMAGE_PATH"
 
 echo "starting VM $VMID"
