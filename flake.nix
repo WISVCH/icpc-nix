@@ -9,7 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Use nixos generators for generating an iso
+    # Use nixos generators for generating UEFI-bootable disk images
     nixos-generators.url = "github:nix-community/nixos-generators";
     nixos-generators.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -62,7 +62,7 @@
       ## nix build .#console
       packages.x86_64-linux.console = inputs.nixos-generators.nixosGenerate {
         system = "x86_64-linux";
-        format = "raw";
+        format = "raw-efi";
         specialArgs = {
           inherit self inputs system vars;
         };
@@ -78,7 +78,7 @@
       ## nix build .#contestant
       packages.x86_64-linux.contestant = inputs.nixos-generators.nixosGenerate {
         system = "x86_64-linux";
-        format = "raw";
+        format = "raw-efi";
         specialArgs = {
           inherit self inputs system vars;
           diskSize = 20 * 1024;
