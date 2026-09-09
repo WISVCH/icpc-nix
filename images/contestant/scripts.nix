@@ -37,8 +37,8 @@ rec {
   environment.variables.SUBMITBASEURL = submitbaseurl;
 
   environment.systemPackages = with pkgs; [
-    python312
-    python312Packages.requests
-    python312Packages.magic
+    python3
+    python3Packages.requests
+    python3Packages.magic
   ];
 }
