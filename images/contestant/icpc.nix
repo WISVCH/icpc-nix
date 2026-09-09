@@ -18,9 +18,9 @@ rec {
   security.polkit.enable = true;
   # TODO Add polkit rules
 
-  services.logind.extraConfig = ''
-    KillOnlyUsers=contestant
-  '';
+  # services.logind.extraConfig = ''
+  #   KillOnlyUsers=contestant
+  # '';
 
   #TODO delete icpc workspaces
   #TODO add icpcadmin home template
