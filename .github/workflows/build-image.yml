@@ -145,6 +145,18 @@ jobs:
           scp $SSH_OPTS result/nixos.img "${REMOTE}:${STAGED_NAME}"
           ssh $SSH_OPTS "$REMOTE" "sudo /usr/local/sbin/ci-deploy-image.sh '${PROXMOX_VMID}' \"\$HOME/${STAGED_NAME}\""
 
-      - name: Garbage collect Nix store
+      - name: Remove built image from Nix store
+        # Delete just the image we built (it's the only large, one-off
+        # output; the runtime closure is dominated by that one raw disk
+        # image). We deliberately avoid `nix-collect-garbage`, which would
+        # also sweep up unrelated cached build outputs that have no live
+        # GC root of their own, e.g. squid, which is uncached upstream
+        # (insecure packages aren't built by Hydra) and takes ~5 minutes
+        # to rebuild from source.
         if: always()
-        run: nix-collect-garbage -d
+        run: |
+          if [ -L result ]; then
+            STORE_PATH="$(readlink -f result)"
+            rm -f result
+            nix store delete "$STORE_PATH" || echo "::warning::Could not delete $STORE_PATH (still referenced elsewhere?)"
+          fi
