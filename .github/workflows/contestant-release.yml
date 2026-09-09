@@ -1,0 +1,13 @@
+name: contestant release
+
+on:
+  push:
+    tags:
+      - "contestant-v*"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: contestant
+    secrets: inherit
