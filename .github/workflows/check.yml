@@ -8,6 +8,7 @@ name: Check
 
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   check:
@@ -32,7 +33,9 @@ jobs:
     # Separate from `check` so a failing nixosTest (a real VM boot + service
     # checks, slower than the steps above) never blocks that job, and never
     # blocks deploy either - release.yml/build-image.yml don't depend on
-    # this workflow at all.
+    # this workflow at all. Manual-only (not run on every push): building
+    # the full contestant image for a VM boot is slow.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, nix-builder]
     defaults:
       run:
