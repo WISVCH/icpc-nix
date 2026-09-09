@@ -35,3 +35,11 @@ _Avoid_: prep window, setup day
 
 **DW test**:
 A dress-rehearsal / venue test of booting console and contestant USBs, held separately from (and not assumed to share machines or firmware state with) the actual contest.
+
+**Release key**:
+The one private signing key (and its certificate) icpc-nix controls. Held as a CI secret for CI builds; contributors who need to sign locally get their own copy via their own secret manager (e.g. 1Password). Its certificate is what actually gets MOK-enrolled on exam-room machines.
+_Avoid_: signing key
+
+**Sign-image script**:
+The post-build step that writes shim, signed GRUB/kernel/initrd, and the certificate onto an already-built raw-efi image's ESP, using the release key. `nix build` itself always produces an unsigned image; signing only happens here, and only when the release key is available.
+_Avoid_: signing step, build step (this is deliberately not part of the Nix build — see `docs/adr/0002-sign-images-post-build.md`)
