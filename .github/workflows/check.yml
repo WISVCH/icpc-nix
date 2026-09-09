@@ -27,6 +27,3 @@ jobs:
 
       - name: Build contestant system closure
         run: nix build .#nixosConfigurations.contestant.config.system.build.toplevel -L --no-link
-
-      - name: Garbage collect Nix store
-        run: nix-collect-garbage -d
