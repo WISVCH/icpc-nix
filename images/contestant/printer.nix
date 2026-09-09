@@ -6,8 +6,8 @@
     gnomeExtensions.printers
     enscript
     cups-pdf-to-pdf
-    python312Packages.fpdf
-    python312Packages.pypdf2
+    # python312Packages.fpdf
+    # python312Packages.pypdf2
   ];
 
   services.printing.enable = true;
