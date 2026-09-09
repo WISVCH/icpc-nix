@@ -21,7 +21,7 @@ rec {
     disable-turboboost = {
       source = pkgs.fetchurl {
         url = "https://raw.githubusercontent.com/DOMjudge/domjudge-scripts/main/provision-contest/disable-turboboost_ht";
-        sha256 = "1signld4w4sp0z8vypw1kcqi5442d2kwwa62syicd6hyi9rf7kkj";
+                  sha256 = "sha256-XtOV0DCfF5OfMz+R0rOJc58gM2nrcvWnCHS4WJLt2UQ=";
       };
       target = "disable-turboboost_ht";
     };
