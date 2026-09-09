@@ -27,4 +27,8 @@ The image can also be tested in Proxmox: import `result/nixos.img` as a VM disk 
 
 ## Releasing and deploying
 
-Releases are built by manually running the **Release image** workflow (Actions tab > "Release image" > Run workflow), which lets you pick the image, a version, whether it's a prerelease, and whether to deploy the result to that image's Proxmox staging VM afterwards. See `.github/workflows/build-image.yml` for the required repository variables/secrets, and `deploy/proxmox/setup.sh` for one-time setup of the deploy user on the Proxmox host.
+Releases are built by manually running the **Release image** workflow (Actions tab > "Release image" > Run workflow), which lets you pick the image, a version, whether it's a prerelease, and whether to deploy the result to that image's Proxmox staging VM afterwards. See `.github/workflows/build-image.yml` for the required repository variables/secrets.
+
+One-time setup on the Proxmox host, in order:
+1. `deploy/proxmox/create-vms.sh` — creates the two staging VMs (OVMF/UEFI bios, EFI disk, initial disk imported from a raw image you built).
+2. `deploy/proxmox/setup.sh` — creates the scoped `ci-deploy` user, its sudoers rule, and the SSH key that goes in the `PROXMOX_SSH_KEY` GitHub secret.
