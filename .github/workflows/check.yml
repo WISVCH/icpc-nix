@@ -27,3 +27,19 @@ jobs:
 
       - name: Build contestant system closure
         run: nix build .#nixosConfigurations.contestant.config.system.build.toplevel -L --no-link
+
+  vm-tests:
+    # Separate from `check` so a failing nixosTest (a real VM boot + service
+    # checks, slower than the steps above) never blocks that job, and never
+    # blocks deploy either - release.yml/build-image.yml don't depend on
+    # this workflow at all.
+    runs-on: [self-hosted, nix-builder]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run contestant VM tests
+        run: nix build .#contestant-vm-tests -L

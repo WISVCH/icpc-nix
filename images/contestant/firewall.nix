@@ -8,15 +8,13 @@ in
 
   boot.kernelParams = [ "net.ipv4.ip_forward=1" "net.ipv6.conf.all.forwarding=1" "net.ipv4.conf.all.send_redirects=0" ];
 
-  # environment.etc = {
-  # "autologin" = {
-  # text = ''
-  # Placeholder
-  # '';
-  # target = "squid/autologin.conf";
-  # mode = "0644";
-  # };
-  # };
+  environment.etc."autologin" = {
+    text = ''
+      # Placeholder for domjudge autologin rules.
+    '';
+    target = "squid/autologin.conf";
+    mode = "0644";
+  };
 
   networking.nftables = {
     enable = true;
