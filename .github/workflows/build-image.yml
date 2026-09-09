@@ -5,8 +5,8 @@ name: Build and release image
 # Runner requirements (one-time setup on the self-hosted GCP VM, not done here):
 #   - Nix installed (flakes + nix-command enabled) and registered as a
 #     GitHub Actions self-hosted runner labeled "nix-builder".
-#   - `attic` CLI installed, with an Attic server running locally on the
-#     same VM (backed by its own GCS bucket).
+#   # - `attic` CLI installed, with an Attic server running locally on the
+#   #   same VM (backed by its own GCS bucket).
 #   - `gcloud` CLI installed and authenticated via Workload Identity
 #     Federation at the org/repo level (see google-github-actions/auth below).
 #
@@ -14,12 +14,12 @@ name: Build and release image
 #   GCP_WORKLOAD_IDENTITY_PROVIDER  - full WIF provider resource name
 #   GCP_SERVICE_ACCOUNT             - service account email to impersonate
 #   GCS_ARTIFACT_BUCKET             - bucket that holds built images
-#   ATTIC_CACHE_NAME                - name of the Attic cache to push to
-#   ATTIC_ENDPOINT                  - Attic server URL (e.g. http://127.0.0.1:8080)
-#   ATTIC_PUBLIC_KEY                - Attic cache's trusted public key
+#   # ATTIC_CACHE_NAME              - name of the Attic cache to push to
+#   # ATTIC_ENDPOINT                - Attic server URL (e.g. http://127.0.0.1:8080)
+#   # ATTIC_PUBLIC_KEY              - Attic cache's trusted public key
 #
 # Required repository secret:
-#   ATTIC_AUTH_TOKEN                - push token for the Attic cache
+#   # ATTIC_AUTH_TOKEN              - push token for the Attic cache
 
 on:
   workflow_call:
@@ -28,9 +28,9 @@ on:
         description: "Flake package/nixosConfiguration to build (console or contestant)"
         required: true
         type: string
-    secrets:
-      ATTIC_AUTH_TOKEN:
-        required: true
+    # secrets:
+    #   ATTIC_AUTH_TOKEN:
+    #     required: true
 
 permissions:
   contents: write
@@ -55,19 +55,19 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Log in to Attic cache
-        run: |
-          attic login local "${{ vars.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_AUTH_TOKEN }}"
-          attic use "${{ vars.ATTIC_CACHE_NAME }}"
+      # - name: Log in to Attic cache
+      #   run: |
+      #     attic login local "${{ vars.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_AUTH_TOKEN }}"
+      #     attic use "${{ vars.ATTIC_CACHE_NAME }}"
 
       - name: Build image
         run: |
-          nix build ".#${{ inputs.image }}" -L \
-            --extra-substituters "${{ vars.ATTIC_ENDPOINT }}/${{ vars.ATTIC_CACHE_NAME }}" \
-            --extra-trusted-public-keys "${{ vars.ATTIC_PUBLIC_KEY }}"
+          nix build ".#${{ inputs.image }}" -L
+          # --extra-substituters "${{ vars.ATTIC_ENDPOINT }}/${{ vars.ATTIC_CACHE_NAME }}" \
+          # --extra-trusted-public-keys "${{ vars.ATTIC_PUBLIC_KEY }}"
 
-      - name: Push build closure to Attic
-        run: attic push "${{ vars.ATTIC_CACHE_NAME }}" ./result
+      # - name: Push build closure to Attic
+      #   run: attic push "${{ vars.ATTIC_CACHE_NAME }}" ./result
 
       - name: Compute checksum
         id: checksum
