@@ -10,13 +10,13 @@ if [[ $# -ne 0 && $# -ne 2 ]]; then
     exit 1
 fi
 
-sed -i '/machine dj.chipcie.ch.tudelft.nl/d' /icpc/netrc
+sed -i '/machine @domjudge_url@/d' /icpc/netrc
 
 if [[ $# -eq 2 ]]; then
   DJTEAM=$1
   DJPASS=$2
 
-  NETRC_STRING="machine {{ domjudge_url }} login $DJTEAM password $DJPASS"
+  NETRC_STRING="machine @domjudge_url@ login $DJTEAM password $DJPASS"
 
   echo $NETRC_STRING >> /icpc/netrc
 
@@ -31,7 +31,7 @@ request_header_add X-DOMjudge-Pass "$b64pass" autologin
 EOF
 
   cat > /etc/icpc/firefox-addon/config.js <<EOF
-  let target = "*://dj.chipcie.ch.tudelft.nl/login";
+  let target = "*://@domjudge_url@/login";
   let user = "$DJTEAM";
   let password_base64 = "$b64pass";
 EOF

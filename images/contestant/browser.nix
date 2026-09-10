@@ -1,6 +1,6 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, vars, ... }:
 let
-  domjudge_url = "dj.chipcie.ch.tudelft.nl";
+  inherit (vars) domjudge_url;
 in
 {
 

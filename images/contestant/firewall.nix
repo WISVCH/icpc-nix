@@ -1,6 +1,6 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, vars, ... }:
 let
-  domjudge_url = "dj.chipcie.ch.tudelft.nl";
+  inherit (vars) domjudge_url;
 in
 {
   networking.proxy.default = "http://127.0.0.1:3128";

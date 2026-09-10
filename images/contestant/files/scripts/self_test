@@ -76,7 +76,7 @@ HOSTNAME="$(hostname)"
 echo $HOSTNAME
 print_check "Timezone"
 TIMEZONE="$(timedatectl show -p Timezone 2>/dev/null)"
-if [ $TIMEZONE = "Timezone=Europe/Amsterdam" ]; then
+if [ $TIMEZONE = "Timezone=@icpc_timezone@" ]; then
   TIMEZONE="${GREEN}${TIMEZONE}${RESET}"
 else
   TIMEZONE="${RED}${TIMEZONE}${RESET}"
@@ -97,7 +97,7 @@ cat /etc/squid/autologin.conf 2>/dev/null | grep "X-DOMjudge" > /dev/null
 if [ $? -eq 0 ]; then
   DJTEAM=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Login/{print $3}' | tr -d '"')
   DJPASS=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Pass/{print $3}' | tr -d '"' | base64 --decode)
-  HTTPCODE=$(curl -s -o /dev/null -w "%{http_code}" -X 'GET' -u "${DJTEAM}:${DJPASS}" 'https://dj.chipcie.ch.tudelft.nl/api/v4/user' -H 'accept: application/json' -L --connect-timeout 5)
+  HTTPCODE=$(curl -s -o /dev/null -w "%{http_code}" -X 'GET' -u "${DJTEAM}:${DJPASS}" 'https://@domjudge_url@/api/v4/user' -H 'accept: application/json' -L --connect-timeout 5)
   if [ "$HTTPCODE" == "200" ]; then
     echo "${GREEN}Yes${RESET}"
   else
@@ -137,7 +137,7 @@ wget -e use_proxy=yes --timeout=5 -t 1 -e http_proxy=127.0.0.1:3128 -O- http://g
 check_return $?
 
 print_check "Testing access to DOMjudge is successful with proxy"
-wget -e use_proxy=yes --timeout=5 -t 1 -e http_proxy=127.0.0.1:3128 -O- --no-check-certificate dj.chipcie.ch.tudelft.nl 2>/dev/null | grep "DOMjudge" > /dev/null
+wget -e use_proxy=yes --timeout=5 -t 1 -e http_proxy=127.0.0.1:3128 -O- --no-check-certificate @domjudge_url@ 2>/dev/null | grep "DOMjudge" > /dev/null
 check_return $?
 
 print_check "Testing direct internet access is disabled"
