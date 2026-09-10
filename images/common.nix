@@ -19,6 +19,19 @@
   # refuses to deploy an image whose size differs from the target disk.
   virtualisation.diskSize = 20 * 1024;
 
+  # Native `system.build.images.raw-efi` (nixos/modules/image/images.nix)
+  # defaults to systemd-boot, not GRUB. Configure GRUB explicitly - both the
+  # Secure Boot pipeline (docs/adr/0001, scripts/sign-image.sh) and physical
+  # deployment via `nixos-rebuild switch` depend on GRUB specifically, with a
+  # removable-media install so it boots without a firmware NVRAM entry.
+  boot.loader.grub.device = "nodev";
+  boot.loader.grub.efiSupport = true;
+  boot.loader.grub.efiInstallAsRemovable = true;
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/ESP";
+    fsType = "vfat";
+  };
+
   # Add experimental flakes support
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
