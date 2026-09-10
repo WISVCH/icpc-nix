@@ -2,7 +2,7 @@
 Name=[VIM] Visual Studio Code
 Comment=[VIM] Code Editing. Redefined.
 GenericName=Text Editor
-Exec=/usr/share/code/code --unity-launch %F
+Exec=code --unity-launch %F
 Icon=vscode
 Type=Application
 StartupNotify=false
@@ -14,5 +14,5 @@ Keywords=vscode;
 
 [Desktop Action new-empty-window]
 Name=New Empty Window
-Exec=/usr/share/code/code --new-window %F
+Exec=code --new-window %F
 Icon=vscode
