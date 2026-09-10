@@ -5,6 +5,7 @@
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.extraSpecialArgs = { inherit vars; };
+  home-manager.sharedModules = [ { manual.manpages.enable = false; } ];
 
   home-manager.users = {
     "contestant" = {
