@@ -72,8 +72,6 @@
     in
 
     {
-      inherit lib;
-
       # For nixos-rebuild
       nixosConfigurations = {
         console = lib.nixosSystem {

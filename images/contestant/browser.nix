@@ -12,33 +12,36 @@ in
       default = {
         # extensions = [ ];
 
-        bookmarks = [
-          {
-            name = "Sites";
-            toolbar = true;
-            bookmarks =
-              [
-                {
-                  name = "DOMjudge";
-                  url = "http://${domjudge_url}";
-                  # "Favicon" = "http://${domjudge_url}/favicon.ico";
-                }
-                {
-                  name = "DOMjudge team manual";
-                  url = "http://${domjudge_url }/doc/manual/domjudge-team-manual.pdf";
-                  # "Favicon" = "http://${domjudge_url}/favicon.ico";
-                }
-                {
-                  name = "Jury Advice";
-                  url = "http://localhost:8080/jury-advice.pdf";
-                }
-                {
-                  name = "Documentation";
-                  url = "http://localhost:8080";
-                }
-              ];
-          }
-        ];
+        bookmarks = {
+          force = true;
+          settings = [
+            {
+              name = "Sites";
+              toolbar = true;
+              bookmarks =
+                [
+                  {
+                    name = "DOMjudge";
+                    url = "http://${domjudge_url}";
+                    # "Favicon" = "http://${domjudge_url}/favicon.ico";
+                  }
+                  {
+                    name = "DOMjudge team manual";
+                    url = "http://${domjudge_url }/doc/manual/domjudge-team-manual.pdf";
+                    # "Favicon" = "http://${domjudge_url}/favicon.ico";
+                  }
+                  {
+                    name = "Jury Advice";
+                    url = "http://localhost:8080/jury-advice.pdf";
+                  }
+                  {
+                    name = "Documentation";
+                    url = "http://localhost:8080";
+                  }
+                ];
+            }
+          ];
+        };
         # settings = {
         #   "browser.startup.homepage" = "${domjudge_url}|${domjudge_url}/doc/manual/domjudge-team-manual.pdf|localhost:8080";
         #   "browser.shell.checkDefaultBrowser" = false;
