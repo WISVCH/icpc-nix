@@ -8,6 +8,7 @@
     fsType = "ext4";
   };
 
-  boot.loader.grub.device = "nodev";
+  # boot.loader.grub.device / efiSupport / efiInstallAsRemovable come from
+  # images/common.nix, shared with the image-building packages.
   boot.loader.timeout = 0;
 }

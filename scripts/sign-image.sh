@@ -61,9 +61,10 @@ mmd_i() { mmd -i "$MTOOLS_IMG" "$@"; }
 echo "== ESP /EFI/BOOT before signing ==" >&2
 mdir_i "::/EFI/BOOT" >&2
 
-# nixos-generators' raw-efi format (efiInstallAsRemovable = true) installs
-# the plain, unsigned GRUB binary as the default boot entry. FAT short names
-# are case-insensitive, so mtools matches this regardless of on-disk case.
+# The raw-efi image's GRUB config (efiInstallAsRemovable = true, see
+# images/common.nix) installs the plain, unsigned GRUB binary as the default
+# boot entry. FAT short names are case-insensitive, so mtools matches this
+# regardless of on-disk case.
 if ! mcopy_i "::/EFI/BOOT/BOOTX64.EFI" "$WORK/grubx64.efi.unsigned"; then
   echo "error: EFI/BOOT/BOOTX64.EFI not found on ESP" >&2
   exit 1

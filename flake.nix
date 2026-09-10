@@ -9,11 +9,6 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # Use nixos generators for generating UEFI-bootable disk images
-    nixos-generators.url = "github:nix-community/nixos-generators";
-    nixos-generators.inputs.nixpkgs.follows = "nixpkgs";
-
   };
 
   outputs =
@@ -125,48 +120,64 @@
       };
 
       ## nix build .#console
-      packages.x86_64-linux.console = inputs.nixos-generators.nixosGenerate {
-        system = "x86_64-linux";
-        format = "raw-efi";
-        specialArgs = {
-          inherit
-            self
-            inputs
-            system
-            vars
-            pkgs-unstable
-            ;
-        };
-        modules = [
-          ./images/common.nix
-          ./images/console
-          {
-            system.stateVersion = "23.11";
-          }
-        ];
-      };
+      packages.x86_64-linux.console =
+        (lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
+          };
+          modules = [
+            ./images/common.nix
+            ./images/console
+            {
+              system.stateVersion = "23.11";
+              # image.baseName only exists within the per-format extended
+              # eval (config.system.build.images.<format>), not the top-level
+              # config, so it's set via image.modules.raw-efi rather than
+              # directly - deferredModule merges this in alongside the
+              # built-in raw-efi definition (nixos/modules/image/images.nix).
+              image.modules.raw-efi = {
+                image.baseName = "nixos";
+              };
+            }
+          ];
+        }).config.system.build.images.raw-efi;
 
       ## nix build .#contestant
-      packages.x86_64-linux.contestant = inputs.nixos-generators.nixosGenerate {
-        system = "x86_64-linux";
-        format = "raw-efi";
-        specialArgs = {
-          inherit
-            self
-            inputs
-            system
-            vars
-            pkgs-unstable
-            ;
-        };
-        modules = [
-          ./images/common.nix
-          ./images/contestant
-          {
-            system.stateVersion = "23.11";
-          }
-        ];
-      };
+      packages.x86_64-linux.contestant =
+        (lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
+          };
+          modules = [
+            ./images/common.nix
+            ./images/contestant
+            {
+              system.stateVersion = "23.11";
+              # image.baseName only exists within the per-format extended
+              # eval (config.system.build.images.<format>), not the top-level
+              # config, so it's set via image.modules.raw-efi rather than
+              # directly - deferredModule merges this in alongside the
+              # built-in raw-efi definition (nixos/modules/image/images.nix).
+              image.modules.raw-efi = {
+                image.baseName = "nixos";
+              };
+            }
+          ];
+        }).config.system.build.images.raw-efi;
 
       ## nix build .#shim
       packages.x86_64-linux.shim = shim;
