@@ -136,7 +136,6 @@
             vars
             pkgs-unstable
             ;
-          diskSize = 20 * 1024;
         };
         modules = [
           ./images/common.nix
@@ -159,7 +158,6 @@
             vars
             pkgs-unstable
             ;
-          diskSize = 20 * 1024;
         };
         modules = [
           ./images/common.nix
