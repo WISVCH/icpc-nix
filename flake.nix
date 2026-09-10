@@ -28,7 +28,7 @@
     let
       lib = nixpkgs.lib;
       system = "x86_64-linux";
-      vars = import ./vars.nix;
+      vars = import ./vars.nix { };
       pkgs = import nixpkgs { inherit system; };
       pkgs-unstable = import nixpkgs-unstable { inherit system; };
 

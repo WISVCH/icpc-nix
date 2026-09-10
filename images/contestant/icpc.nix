@@ -1,7 +1,17 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, vars, ... }:
 let
   on_boot_text = builtins.readFile ./files/scripts/on_boot.sh;
   on_boot = pkgs.writeShellScriptBin "on-boot" on_boot_text;
+
+  self_test = pkgs.replaceVars ./files/scripts/self_test {
+    inherit (vars) icpc_timezone domjudge_url;
+  };
+  set_domjudge_creds = pkgs.replaceVars ./files/scripts/set_domjudge_creds.sh {
+    inherit (vars) domjudge_url;
+  };
+  set_hostname = pkgs.replaceVars ./files/scripts/set_hostname.sh {
+    inherit (vars) hostnames_api dns_api dns_zone;
+  };
 in
 
 rec {
@@ -130,19 +140,19 @@ rec {
     };
 
     self_test = {
-      source = ./files/scripts/self_test;
+      source = self_test;
       target = "icpc/scripts/self_test";
       mode = "0755";
     };
 
     set_domjudge_creds = {
-      source = ./files/scripts/set_domjudge_creds.sh;
+      source = set_domjudge_creds;
       target = "icpc/scripts/set_domjudge_creds.sh";
       mode = "0755";
     };
 
     set_hostname = {
-      source = ./files/scripts/set_hostname.sh;
+      source = set_hostname;
       target = "icpc/scripts/set_hostname.sh";
       mode = "0755";
     };
