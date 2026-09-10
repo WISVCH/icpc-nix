@@ -5,6 +5,7 @@
     ./admintools.nix
     ./base.nix
     ./compilers.nix
+    ./desktop-icon-emblems.nix
     ./devtools.nix
     ./firewall.nix
     ./gui.nix

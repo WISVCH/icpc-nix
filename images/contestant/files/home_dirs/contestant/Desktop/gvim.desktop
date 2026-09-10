@@ -5,7 +5,7 @@
 Name[de]=GVim
 Name[eo]=GVim
 Name[tr]=GVim
-Name=GVim
+Name=Neovim (GUI)
 # Translators: This is the Generic Application Name used in the Vim desktop file
 GenericName[de]=Texteditor
 GenericName[eo]=Tekstoredaktilo
@@ -90,8 +90,8 @@ Comment[vi]=Soạn thảo tập tin văn bản
 Comment[wa]=Asspougnî des fitchîs tecses
 Comment[zh_CN]=编辑文本文件
 Comment[zh_TW]=編輯文字檔
-TryExec=gvim
-Exec=gvim -f %F
+TryExec=nvim-gtk
+Exec=nvim-gtk %F
 Terminal=false
 Type=Application
 # Translators: Search terms to find this application. Do NOT change the semicolons! The list MUST also end with a semicolon!
@@ -101,9 +101,9 @@ Keywords[ja]=テキスト;エディタ;
 Keywords[tr]=Metin;düzenleyici;
 Keywords=Text;editor;
 # Translators: This is the Icon file name. Do NOT translate
-Icon[de]=gvim
-Icon[eo]=gvim
-Icon=gvim
+Icon[de]=nvim
+Icon[eo]=nvim
+Icon=nvim
 Categories=Utility;TextEditor;
 StartupNotify=true
 MimeType=text/english;text/plain;text/x-makefile;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/x-c;text/x-c++;

@@ -5,10 +5,8 @@ in
 rec {
   systemd.tmpfiles.rules = [
     "d /icpc 0755 icpcadmin icpcadmin -"
-    # "C+ /icpc/scripts 0755 icpcadmin icpcadmin - ${environment.etc.icpc-scripts.source}"
     "C+ /icpc/scripts/bin/disable-turboboost_ht 0755 icpcadmin icpcadmin - ${environment.etc.disable-turboboost.source}"
     "C+ /icpc/scripts/bin/submit 0755 icpcadmin icpcadmin - ${environment.etc.submit-client.source}"
-    "Z /icpc/scripts 755 icpcadmin icpcadmin -"
     "f /icpc/netrc 644 icpcadmin icpcadmin -"
   ];
 

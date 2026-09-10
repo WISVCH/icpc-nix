@@ -37,11 +37,12 @@ rec {
 
   systemd.tmpfiles.rules = [
     "d /icpc 0755 icpcadmin icpcadmin -"
-    # "C+ /icpc/scripts 0755 icpcadmin icpcadmin - ${environment.etc.icpc-scripts.source}"
-    # "C+ /icpc/scripts/bin/disable-turboboost_ht 0755 icpcadmin icpcadmin - ${environment.etc.disable-turboboost.source}"
-    # "C+ /icpc/scripts/bin/submit 0755 icpcadmin icpcadmin - ${environment.etc.submit-client.source}"
+    # /icpc/scripts is a symlink to /etc/icpc/scripts, where each script is actually
+    # installed (see environment.etc.* below). Without this, Exec=/icpc/scripts/... in
+    # the desktop-permissions autostart entry (gui.nix) pointed at nothing and the
+    # Desktop launchers were never marked trusted.
+    "L+ /icpc/scripts - - - - /etc/icpc/scripts"
     "C+ /icpc/wallpaper.png 0755 - - - ${environment.etc.wallpaper.source}"
-    "Z /icpc/scripts 755 icpcadmin icpcadmin -"
     "f /icpc/netrc 644 icpcadmin icpcadmin -"
   ];
   environment.etc = {
