@@ -13,6 +13,12 @@
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.permittedInsecurePackages = [ "squid-6.10" ];
 
+  # The raw-efi format reads this via config.virtualisation.diskSize to pick
+  # the disk image size (make-disk-image.nix). It must match the size of the
+  # existing Proxmox VM disks exactly, since deploy/proxmox/ci-deploy-image.sh
+  # refuses to deploy an image whose size differs from the target disk.
+  virtualisation.diskSize = 20 * 1024;
+
   # Add experimental flakes support
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
