@@ -108,10 +108,16 @@
     assert code == "302", \
         f"expected squid to redirect a non-allow-listed host to block.html, got {code}"
 
+    # nftables transparently redirects the contestant user's outbound 80/443
+    # to squid (see firewall.nix) regardless of proxy env vars, so "direct"
+    # access always ends up hitting squid's redirect-to-block.html - `curl
+    # --fail` treats a 302 as success (only >=400 counts as failure),
+    # which is why this needs to check the status code, not exit status.
     print("Checking direct (non-proxied) internet access is blocked for contestant")
-    machine.fail(
-        "su - contestant -c "
-        "'curl --fail --silent --max-time 5 http://example.com'"
-    )
+    code = machine.succeed(
+        "su - contestant -c 'curl -s -o /dev/null -w \"%{http_code}\" --max-time 5 http://example.com'"
+    ).strip()
+    assert code == "302", \
+        f"expected contestant's direct traffic to be transparently redirected to squid's block page, got {code}"
   '';
 }
