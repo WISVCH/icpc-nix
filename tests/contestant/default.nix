@@ -33,6 +33,7 @@ let
     # assertion.
     (import ./domjudge.nix { inherit domjudgeUrl; })
     (import ./firewall.nix { inherit pkgs self inputs system vars; })
+    (import ./usbguard.nix { inherit pkgs self inputs system vars; })
   ];
 
   indent = script:
