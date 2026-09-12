@@ -23,7 +23,7 @@
 
     print("Waiting for set_hostname.sh to run as part of firstboot.service")
     machine.wait_until_succeeds(
-        f'test "$(hostname)" = "${testHostname}"', timeout=120
+        'test "$(hostname)" = "${testHostname}"', timeout=120
     )
 
     print("Checking pdns actually got the A record set_hostname.sh PATCHed in")
