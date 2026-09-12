@@ -25,11 +25,8 @@ let
 
   # judgehost.nix must run first: submissions.nix needs a real judgehost
   # registered to actually judge anything.
-  subtests = nodes: [
-    (import ./judgehost.nix {
-      inherit domjudgeIp;
-      judgehostUid = nodes.console.config.users.users.judgehost.uid;
-    })
+  subtests = [
+    (import ./judgehost.nix { inherit domjudgeIp; })
     (import ./submissions.nix { inherit pkgs; })
   ];
 
@@ -78,5 +75,5 @@ pkgs.testers.runNixOSTest {
     cert = domjudgeCert;
   };
 
-  testScript = { nodes, ... }: lib.concatMapStrings subtestScript (subtests nodes);
+  testScript = lib.concatMapStrings subtestScript subtests;
 }

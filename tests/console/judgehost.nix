@@ -12,7 +12,7 @@
 # the design discussion on issue #54: that would newly make icpc-nix, not
 # icpc-playbooks, responsible for judgehost startup, a bigger change than
 # this test needs).
-{ domjudgeIp, judgehostUid }:
+{ domjudgeIp }:
 {
   name = "judgehost-connect";
   script = ''
@@ -29,9 +29,14 @@
     # a lingering login session to start without an interactive login - see
     # nixpkgs' own nixos/tests/docker-rootless.nix, which this follows.
     console.succeed("loginctl enable-linger judgehost")
+
+    # isNormalUser accounts get their uid assigned at system activation, not
+    # visible in the static Nix config (nodes.console.config...uid is null
+    # there) - read it back from the running system instead.
+    judgehost_uid = console.succeed("id -u judgehost").strip()
     sudo = (
-        "XDG_RUNTIME_DIR=/run/user/${toString judgehostUid} "
-        "DOCKER_HOST=unix:///run/user/${toString judgehostUid}/docker.sock "
+        f"XDG_RUNTIME_DIR=/run/user/{judgehost_uid} "
+        f"DOCKER_HOST=unix:///run/user/{judgehost_uid}/docker.sock "
         "sudo --preserve-env=XDG_RUNTIME_DIR,DOCKER_HOST -u judgehost"
     )
     console.wait_until_succeeds(f"{sudo} systemctl --user is-active docker.service")
