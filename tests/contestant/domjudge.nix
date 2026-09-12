@@ -33,15 +33,24 @@
     )
 
     print("DOMjudge is up - seeding a test team account via users/accounts")
+    # The TSV accounts format requires the username to encode an existing
+    # team's numeric ID (CCS accounts.tsv spec - e.g. "team1"), which fails
+    # to parse for a plain username and refuses to auto-create a team. The
+    # JSON variant of the same endpoint takes an explicit team_id and, per
+    # ImportExportService::importAccountData, auto-creates that team if it
+    # doesn't exist yet - no pre-existing team or digit-encoded username
+    # needed.
     domjudge.succeed(
-        "printf 'accounts\\t1\\nteam\\tTest Team\\ttestteam\\ttestpass\\n' "
-        "> /tmp/accounts.tsv"
+        "printf '%s' "
+        "'[{\"id\":\"testteam\",\"username\":\"testteam\",\"name\":\"Test Team\","
+        "\"password\":\"testpass\",\"type\":\"team\",\"team_id\":\"1\"}]' "
+        "> /tmp/accounts.json"
     )
-    domjudge.succeed("podman cp /tmp/accounts.tsv domserver:/tmp/accounts.tsv")
+    domjudge.succeed("podman cp /tmp/accounts.json domserver:/tmp/accounts.json")
     domjudge.succeed(
         "podman exec domserver "
         "/opt/domjudge/domserver/webapp/bin/console api:call "
-        "-m POST -f tsv=/tmp/accounts.tsv users/accounts"
+        "-m POST -f json=/tmp/accounts.json users/accounts"
     )
 
     print("Running self_test before the workstation is configured")
