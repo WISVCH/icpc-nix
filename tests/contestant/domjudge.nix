@@ -19,6 +19,10 @@
   script = ''
     import re
 
+    # This subtest runs before squid.nix (which also exercises squid), so it
+    # can't rely on that subtest having already waited for the unit.
+    machine.wait_for_unit("squid.service")
+
     domjudge.wait_for_unit("podman-mariadb.service")
     domjudge.wait_for_unit("podman-domserver.service")
     domjudge.wait_for_unit("nginx.service")

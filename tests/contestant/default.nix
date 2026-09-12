@@ -27,8 +27,11 @@ let
   };
 
   subtests = [
-    (import ./squid.nix { inherit pkgs self inputs system vars; })
+    # Must run before squid.nix: squid.nix's regression test leaves DOMjudge
+    # autologin credentials configured on "machine" as a side effect, which
+    # would break this subtest's "not configured yet" assertion.
     (import ./domjudge.nix { inherit domjudgeUrl; })
+    (import ./squid.nix { inherit pkgs self inputs system vars; })
   ];
 
   indent = script:
