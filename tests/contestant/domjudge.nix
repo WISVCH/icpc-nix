@@ -19,9 +19,10 @@
   script = ''
     import re
 
-    # This subtest runs before squid.nix (which also exercises squid), so it
-    # can't rely on that subtest having already waited for the unit.
-    machine.wait_for_unit("squid.service")
+    # This subtest runs before firewall.nix (which also exercises the
+    # ruleset), so it can't rely on that subtest having already waited for
+    # the unit.
+    machine.wait_for_unit("nftables.service")
 
     # network-addresses-eth1.service (which actually assigns eth1 its static
     # IP - see default.nix) is enabled but only gets pulled in via
@@ -91,33 +92,24 @@
     assert re.search(r"Room\s+TZ-1", after), \
         "self_test should report the configured room"
 
-    print("Checking the proxy allow-list independently of self_test's own wording")
+    print("Checking the judge-infrastructure allow-list independently of self_test's own wording")
     machine.succeed(
-        "curl --fail --silent --show-error --max-time 5 "
-        "-x http://127.0.0.1:3128 https://${domjudgeUrl}/ >/dev/null"
+        "su - contestant -c 'curl --fail --silent --show-error --max-time 5 "
+        "https://${domjudgeUrl}/' >/dev/null"
     )
-    # firewall.nix's `deny_info http://localhost:8080/block.html all` is a
-    # full URL, which squid treats as a redirect target (302) rather than
-    # serving that page inline as the 403 body - confirmed by CI. This is
-    # why self_test's own Google-blocked check works via wget (which
-    # follows redirects by default) rather than checking a status code.
-    code = machine.succeed(
-        "curl -s -o /dev/null -w '%{http_code}' "
-        "-x http://127.0.0.1:3128 http://example.com"
-    ).strip()
-    assert code == "302", \
-        f"expected squid to redirect a non-allow-listed host to block.html, got {code}"
 
-    # nftables transparently redirects the contestant user's outbound 80/443
-    # to squid (see firewall.nix) regardless of proxy env vars, so "direct"
-    # access always ends up hitting squid's redirect-to-block.html - `curl
-    # --fail` treats a 302 as success (only >=400 counts as failure),
-    # which is why this needs to check the status code, not exit status.
-    print("Checking direct (non-proxied) internet access is blocked for contestant")
-    code = machine.succeed(
-        "su - contestant -c 'curl -s -o /dev/null -w \"%{http_code}\" --max-time 5 http://example.com'"
-    ).strip()
-    assert code == "302", \
-        f"expected contestant's direct traffic to be transparently redirected to squid's block page, got {code}"
+    # firewall.nix's nftables ruleset default-denies the contestant user to
+    # everything except the pinned judge IP/NTP servers - there's no
+    # HTTP-aware proxy left to redirect a disallowed request to a block
+    # page (that only existed under the old squid-based design). A
+    # non-allow-listed host like example.com doesn't even resolve, since
+    # contestant has no DNS access at all - check curl's own exit status
+    # (6 = couldn't resolve host) rather than a status code for that reason.
+    print("Checking direct internet access is blocked for contestant")
+    status, _ = machine.execute(
+        "su - contestant -c 'curl -s --max-time 5 http://example.com'"
+    )
+    assert status == 6, \
+        f"expected contestant's DNS lookup for a non-allow-listed host to fail (curl exit 6), got {status}"
   '';
 }

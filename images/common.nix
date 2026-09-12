@@ -11,7 +11,6 @@
 
   boot.kernelParams = [ "console=tty0" "consoleblank=0" "biosdevname=0" "net.ifnames=0" ];
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.permittedInsecurePackages = [ "squid-6.10" ];
 
   # The raw-efi format reads this via config.virtualisation.diskSize to pick
   # the disk image size (make-disk-image.nix). It must match the size of the

@@ -11,15 +11,15 @@
 let
   lib = pkgs.lib;
 
-  # The contestant image bakes vars.domjudge_url into squid's ACLs, the
-  # self_test script, etc. Point it at the ephemeral "domjudge" node instead
-  # of the real production host, so the whole allow-list/autologin path gets
-  # exercised against something this test actually controls.
+  # The contestant image bakes vars.domjudge_url and vars.judge_ip into the
+  # egress allowlist, the self_test script, etc. Point both at the ephemeral
+  # "domjudge" node instead of the real production host, so the whole
+  # allow-list/autologin path gets exercised against something this test
+  # actually controls.
   domjudgeUrl = "domjudge.icpc-nix.test";
-  testVars = vars // { domjudge_url = domjudgeUrl; };
-
   domjudgeIp = "192.168.1.1";
   machineIp = "192.168.1.2";
+  testVars = vars // { domjudge_url = domjudgeUrl; judge_ip = domjudgeIp; };
 
   domjudgeCert = import ./domjudge/cert.nix {
     inherit pkgs;
@@ -27,11 +27,12 @@ let
   };
 
   subtests = [
-    # Must run before squid.nix: squid.nix's regression test leaves DOMjudge
-    # autologin credentials configured on "machine" as a side effect, which
-    # would break this subtest's "not configured yet" assertion.
+    # Must run before firewall.nix: firewall.nix's regression test leaves
+    # DOMjudge autologin credentials configured on "machine" as a side
+    # effect, which would break this subtest's "not configured yet"
+    # assertion.
     (import ./domjudge.nix { inherit domjudgeUrl; })
-    (import ./squid.nix { inherit pkgs self inputs system vars; })
+    (import ./firewall.nix { inherit pkgs self inputs system vars; })
   ];
 
   indent = script:
@@ -55,9 +56,8 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 25 * 60;
 
   node.specialArgs = { inherit self inputs system; vars = testVars; };
-  # images/common.nix sets nixpkgs.config (allowUnfree, permittedInsecurePackages
-  # for squid), which runNixOSTest's default node.pkgs would otherwise make
-  # read-only.
+  # images/common.nix sets nixpkgs.config.allowUnfree, which runNixOSTest's
+  # default node.pkgs would otherwise make read-only.
   node.pkgsReadOnly = false;
 
   nodes.machine = {

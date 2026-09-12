@@ -18,10 +18,8 @@ rm -f /icpc/TEAM
 rm -f /icpc/TEAMID
 rm -f /icpc/ROOM
 
-# reset squid autologin
-echo "# Placeholder" > /etc/squid/autologin.conf
-chmod 640 /etc/squid/autologin.conf
-chown root:root /etc/squid/autologin.conf
+# clear the previous team's DOMjudge credentials
+> /icpc/netrc
 
 # clear self test report
 rm -f /icpc/self_test_report

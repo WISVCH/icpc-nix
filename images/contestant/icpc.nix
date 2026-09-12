@@ -256,7 +256,6 @@ rec {
     wants = [
       "network-online.target"
       "printer.target"
-      "squid.service"
     ];
     after = [
       "network-online.target"
