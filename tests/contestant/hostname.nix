@@ -39,8 +39,19 @@
     # locally against a real (non-virtio) disk. Always print a full verbose
     # dry-run trace so a failure is diagnosable from this one run instead
     # of costing another CI round-trip to add logging after the fact.
+    # The previous version of this diagnostic used plain `udevadm test`,
+    # which - confirmed by its own trace - only reads systemd's own bundled
+    # default rules (.../lib/udev/rules.d), never /etc/udev/rules.d where
+    # NixOS actually places services.udev.packages contributions. Pass
+    # --extra-rules-dir explicitly so the dry run actually considers the
+    # same ruleset the real daemon uses, and confirm the file is on disk
+    # at all first.
+    rules_ls = machine.succeed("ls -la /etc/udev/rules.d/ | grep -i spoof || true")
+    print(f"/etc/udev/rules.d/ spoof-rule listing:\n{rules_ls}")
     devpath = machine.succeed(f"udevadm info --query=path --name={root_mnt}").strip()
-    udev_trace = machine.succeed(f"udevadm test --action=add -v {devpath} 2>&1 || true")
+    udev_trace = machine.succeed(
+        f"udevadm test --extra-rules-dir=/etc/udev/rules.d --action=add -v {devpath} 2>&1 || true"
+    )
     print(f"udevadm test -v trace for {devpath}:\n{udev_trace}")
 
     assert "ID_SERIAL_SHORT=" in udev_info, (
