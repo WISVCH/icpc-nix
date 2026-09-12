@@ -25,7 +25,7 @@ let
   domserverImage = pkgs.dockerTools.pullImage {
     imageName = "ghcr.io/wisvch/domjudge-packaging/domserver";
     imageDigest = "sha256:00b90f5e84b04aeb2cad4ed27a61e64c624c771a2687badfd5e1b09e3fc08a46";
-    sha256 = lib.fakeSha256;
+    sha256 = "sha256-DmYsEara2YM++kz60qfuCwkXZRrBwW7tcajYK5Sc+yE=";
     finalImageName = "ghcr.io/wisvch/domjudge-packaging/domserver";
     finalImageTag = "packaging-e8150e1";
   };
