@@ -1,10 +1,20 @@
-{ pkgs, lib, vars, ... }:
+{ pkgs, lib, vars, self, ... }:
 let
   on_boot_text = builtins.readFile ./files/scripts/on_boot.sh;
   on_boot = pkgs.writeShellScriptBin "on-boot" on_boot_text;
 
+  icpc_commit = self.shortRev or self.dirtyShortRev or "unknown";
+  # self.lastModifiedDate is "YYYYMMDDHHMMSS" (UTC); reformat to "YYYY-MM-DD HH:MM:SS UTC".
+  icpc_committed =
+    let
+      d = self.lastModifiedDate or "00000000000000";
+      part = start: len: builtins.substring start len d;
+    in
+    "${part 0 4}-${part 4 2}-${part 6 2} ${part 8 2}:${part 10 2}:${part 12 2} UTC";
+
   self_test = pkgs.replaceVars ./files/scripts/self_test {
     inherit (vars) icpc_timezone domjudge_url;
+    inherit icpc_commit icpc_committed;
   };
   set_domjudge_creds = pkgs.replaceVars ./files/scripts/set_domjudge_creds.sh {
     inherit (vars) domjudge_url;
