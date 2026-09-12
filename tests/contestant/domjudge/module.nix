@@ -35,6 +35,14 @@ in
   ];
   networking.firewall.allowedTCPPorts = [ 443 ];
 
+  # nixosTest's ~1GB default is nowhere near enough to run mariadb and a
+  # PHP-FPM/nginx DOMjudge stack at the same time - CI observed mariadb's own
+  # startup healthcheck timing out and exiting under that default, taking
+  # podman-domserver.service down with it (dependsOn).
+  virtualisation.memorySize = 4096;
+  virtualisation.cores = 2;
+  virtualisation.diskSize = 8192;
+
   virtualisation.podman.enable = true;
   virtualisation.oci-containers.backend = "podman";
 
