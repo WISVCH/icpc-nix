@@ -11,7 +11,12 @@
 {
   name = "firewall";
   script = ''
-    machine.wait_for_unit("multi-user.target", timeout=120)
+    # Not multi-user.target: it pulls in firstboot/cups/GUI units that have
+    # been observed to hang boot indefinitely in this VM (see
+    # tests/contestant/default.nix). Wait for exactly what this test needs
+    # instead - the network up and the ruleset actually loaded.
+    machine.wait_for_unit("network-online.target", timeout=60)
+    machine.wait_for_unit("nftables.service", timeout=60)
 
     # The generated ruleset actually loaded, with the shape we expect -
     # catches Nix-level mistakes (bad syntax, a rule silently missing)
