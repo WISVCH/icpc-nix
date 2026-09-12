@@ -42,8 +42,8 @@
     print(machine.execute("ip -4 addr show eth1")[1])
     print(machine.execute("ip route")[1])
     print(machine.execute("cat /etc/hosts")[1])
-    print(machine.execute(f"ping -c 2 -W 3 {domjudgeIp}")[1])
-    print(machine.execute(f"curl -v --max-time 5 http://{domjudgeIp}/ 2>&1 | tail -40")[1])
+    print(machine.execute("ping -c 2 -W 3 ${domjudgeIp}")[1])
+    print(machine.execute("curl -v --max-time 5 http://${domjudgeIp}/ 2>&1 | tail -40")[1])
     print("--- end diagnostics ---")
 
     print("DOMjudge is up - seeding a test team account via users/accounts")
