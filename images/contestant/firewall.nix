@@ -1,14 +1,6 @@
-{ pkgs, lib, vars, ... }:
+{ vars, lib, ... }:
 let
-  inherit (vars) domjudge_url hostnames_api dns_api;
-
-  # dj.chipcie.ch.tudelft.nl / hostnames.chipcie.ch.tudelft.nl /
-  # pdns.chipcie.ch.tudelft.nl all CNAME to chipcie.ch.tudelft.nl, a single
-  # dedicated GCP-hosted A record - not shared/CDN infrastructure. Pinning
-  # this one IP is what the whole allowlist below is built on (see ADR 0004);
-  # if that infra ever moves or gets a new IP, this needs updating alongside
-  # the nftables rule further down.
-  judge_ip = "34.141.175.184";
+  inherit (vars) domjudge_url hostnames_api dns_api judge_ip;
 
   # Small, explicit, pinned-by-IP set of Google's public NTP servers.
   # DOMjudge submission timestamps depend on a correct clock, and venue NTP
@@ -18,9 +10,9 @@ let
 in
 {
   # No DNS lookups needed for the judge infrastructure at all - the
-  # nftables rule below only ever needs to know this one IP anyway, and
-  # this keeps the contestant machine from having to trust any DNS
-  # resolution for these names.
+  # nftables rule below only ever needs to know judge_ip anyway, and this
+  # keeps the contestant machine from having to trust any DNS resolution
+  # for these names. See vars.nix for what judge_ip actually points at.
   networking.hosts = {
     "${judge_ip}" = [ domjudge_url hostnames_api dns_api ];
   };
