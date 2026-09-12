@@ -46,8 +46,19 @@
     # --extra-rules-dir explicitly so the dry run actually considers the
     # same ruleset the real daemon uses, and confirm the file is on disk
     # at all first.
-    rules_ls = machine.succeed("ls -la /etc/udev/rules.d/ | grep -i spoof || true")
-    print(f"/etc/udev/rules.d/ spoof-rule listing:\n{rules_ls}")
+    # CI showed the file genuinely isn't there: `ls /etc/udev/rules.d/ |
+    # grep spoof` came back empty, even though the build-time log clearly
+    # showed it being copied into the merged "udev-rules" derivation
+    # output. So /etc/udev/rules.d isn't actually wired to that output the
+    # way expected - find out where (if anywhere) the file really lands.
+    find_result = machine.succeed(
+        "find / -xdev -iname '*spoof-test-serial*' 2>/dev/null || true"
+    )
+    print(f"find results for the rule file anywhere on disk:\n{find_result}")
+    etc_udev_listing = machine.succeed("ls -la /etc/udev/rules.d/ 2>&1 || true")
+    print(f"full /etc/udev/rules.d/ listing:\n{etc_udev_listing}")
+    etc_udev_readlink = machine.succeed("readlink -f /etc/udev/rules.d 2>&1 || true")
+    print(f"/etc/udev/rules.d resolves to:\n{etc_udev_readlink}")
     devpath = machine.succeed(f"udevadm info --query=path --name={root_mnt}").strip()
     udev_trace = machine.succeed(
         f"udevadm test --extra-rules-dir=/etc/udev/rules.d --action=add -v {devpath} 2>&1 || true"
