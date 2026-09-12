@@ -9,7 +9,7 @@ let
   lib = pkgs.lib;
 
   subtests = [
-    (import ./squid.nix { inherit pkgs self inputs system vars; })
+    (import ./firewall.nix { inherit pkgs self inputs system vars; })
   ];
 
   indent = script:
@@ -31,9 +31,8 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 10 * 60;
 
   node.specialArgs = { inherit self inputs system vars; };
-  # images/common.nix sets nixpkgs.config (allowUnfree, permittedInsecurePackages
-  # for squid), which runNixOSTest's default node.pkgs would otherwise make
-  # read-only.
+  # images/common.nix sets nixpkgs.config.allowUnfree, which runNixOSTest's
+  # default node.pkgs would otherwise make read-only.
   node.pkgsReadOnly = false;
 
   nodes.machine = {

@@ -34,9 +34,11 @@ ROOM=$(whiptail --title "Room" --inputbox "Please enter the team's room(e.g. TZ-
 whiptail --title "Configure Automatic Login" --yesno "Do you want to configure the DOMjudge login credentials for the team?\n\nChoosing no will clear any existing login credentials." 10 60
 DJAUTOLOGIN=$?
 if [ $DJAUTOLOGIN -eq 0 ]; then # they click yes
-  # Load existing values
-  DJTEAM=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Login/{print $3}' | tr -d '"')
-  DJPASS=$(cat /etc/squid/autologin.conf | awk '/X-DOMjudge-Pass/{print $3}' | tr -d '"' | base64 -d)
+  # Load existing values (/icpc/netrc holds at most one "machine" line -
+  # set_domjudge_creds.sh always removes the previous one before adding a
+  # new one)
+  DJTEAM=$(awk '/^machine /{print $4}' /icpc/netrc)
+  DJPASS=$(awk '/^machine /{print $6}' /icpc/netrc)
   DJTEAM="${DJTEAM:-$TEAMNAME}"  # Set default to team name if unset
 
   DJTEAM=$(whiptail --title "DOMjudge Login" --inputbox "Please enter the team's DOMjudge login" 10 60 $DJTEAM 3>&1 1>&2 2>&3)
