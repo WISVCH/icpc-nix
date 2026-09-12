@@ -96,12 +96,17 @@
         "curl --fail --silent --show-error --max-time 5 "
         "-x http://127.0.0.1:3128 https://${domjudgeUrl}/ >/dev/null"
     )
+    # firewall.nix's `deny_info http://localhost:8080/block.html all` is a
+    # full URL, which squid treats as a redirect target (302) rather than
+    # serving that page inline as the 403 body - confirmed by CI. This is
+    # why self_test's own Google-blocked check works via wget (which
+    # follows redirects by default) rather than checking a status code.
     code = machine.succeed(
         "curl -s -o /dev/null -w '%{http_code}' "
         "-x http://127.0.0.1:3128 http://example.com"
     ).strip()
-    assert code == "403", \
-        f"expected squid to reject a non-allow-listed host with 403, got {code}"
+    assert code == "302", \
+        f"expected squid to redirect a non-allow-listed host to block.html, got {code}"
 
     print("Checking direct (non-proxied) internet access is blocked for contestant")
     machine.fail(
