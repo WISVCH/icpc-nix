@@ -4,13 +4,6 @@
 # images/console/home/icpcadmin.nix's judgehost pull) running as containers,
 # fronted by a native nginx that terminates TLS with a test-only cert (see
 # cert.nix) so self_test's unmodified `https://` autologin check can trust it.
-#
-# NOTE: the `sha256` fields below are placeholders (lib.fakeSha256). Building
-# this node for the first time will fail with a hash mismatch error that
-# reports the correct value - paste it in and rebuild. This is the standard
-# way to pin a `dockerTools.pullImage` fixed-output derivation; it wasn't
-# done here because fetching ~250MB of image layers wasn't possible in this
-# environment (see the PR description for details).
 { domjudgeIp, domjudgeUrl, cert }:
 { pkgs, lib, ... }:
 let
