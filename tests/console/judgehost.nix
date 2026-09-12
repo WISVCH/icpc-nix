@@ -44,7 +44,9 @@
         "/home/icpcadmin/judgehost/judgehost.tar.gz /tmp/judgehost.tar.gz"
     )
     load_output = console.succeed(f"{sudo} docker load -i /tmp/judgehost.tar.gz")
-    judgehost_image = re.search(r"Loaded image: (\S+)", load_output).group(1)
+    loaded_image_match = re.search(r"Loaded image: (\S+)", load_output)
+    assert loaded_image_match, f"unexpected `docker load` output: {load_output!r}"
+    judgehost_image = loaded_image_match.group(1)
 
     print("Extracting the judgehost REST password domserver generated on first boot")
     password = domjudge.succeed(
