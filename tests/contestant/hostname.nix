@@ -32,9 +32,20 @@
     machine.succeed(f"udevadm trigger --action=add --name-match={root_mnt}")
     machine.succeed("udevadm settle")
     udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
+
+    # Two prior CI attempts (99-numbered extraRules, then an early
+    # 10-numbered services.udev.packages entry) both failed to make
+    # ID_SERIAL_SHORT show up at all here, for reasons neither reproduced
+    # locally against a real (non-virtio) disk. Always print a full verbose
+    # dry-run trace so a failure is diagnosable from this one run instead
+    # of costing another CI round-trip to add logging after the fact.
+    devpath = machine.succeed(f"udevadm info --query=path --name={root_mnt}").strip()
+    udev_trace = machine.succeed(f"udevadm test --action=add -v {devpath} 2>&1 || true")
+    print(f"udevadm test -v trace for {devpath}:\n{udev_trace}")
+
     assert "ID_SERIAL_SHORT=" in udev_info, (
         f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
-        "services.udev.extraRules on the machine node in default.nix), "
+        "services.udev.packages entry on the machine node in default.nix), "
         f"got udevadm info:\n{udev_info}"
     )
 
