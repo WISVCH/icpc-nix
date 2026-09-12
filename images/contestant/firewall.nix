@@ -68,6 +68,14 @@ in
   systemd.services.squid.after = [ "resolvconf.service" ];
   services.squid = {
     enable = true;
+    # The `include /etc/squid/autologin.conf` below points at a path that's
+    # only ever seeded/rewritten at runtime (see the tmpfiles rule above and
+    # set_domjudge_creds.sh) - it never exists in the build sandbox, so
+    # nixpkgs's default build-time `squid -k parse` check (validateConfig)
+    # would fail on every build, unconditionally. The VM test still catches
+    # real breakage: squid actually parses and starts there, against the
+    # real runtime file.
+    validateConfig = false;
     configText = ''
       http_port 3128
       
