@@ -88,6 +88,12 @@ in
       cache_effective_user squid squid
 
       dns_nameservers 8.8.8.8 1.1.1.1
+      # Check /etc/hosts before falling back to dns_nameservers above - lets
+      # a nixosTest point domjudge_url at an ephemeral test instance via
+      # networking.extraHosts (see tests/contestant/default.nix) without
+      # needing real DNS. No effect in production, since /etc/hosts there
+      # has no matching entry.
+      hosts_file /etc/hosts
 
       acl SSL_ports port 443
       acl Safe_ports port 8080

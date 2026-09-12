@@ -22,6 +22,22 @@ let
   set_hostname = pkgs.replaceVars ./files/scripts/set_hostname.sh {
     inherit (vars) hostnames_api dns_api dns_zone;
   };
+
+  # set_teamname.sh needs Pango-markup escaping (gi.repository.GLib), but
+  # scripts.nix's plain `python3` in environment.systemPackages has no
+  # site-packages wired up for the separate python3Packages.* entries listed
+  # alongside it (a common NixOS pitfall - they don't merge into a bare
+  # interpreter's importable packages), so `import gi` fails there. Giving
+  # this script its own self-contained wrapped interpreter sidesteps that
+  # entirely, without touching the shared systemPackages python3 (avoiding a
+  # bin/python3 collision with compilers.nix's separate plain `python3`).
+  escapeMarkup = pkgs.writers.writePython3Bin "escape-markup" {
+    libraries = [ pkgs.python3Packages.pygobject3 ];
+  } ''
+    from gi.repository import GLib
+    import sys
+    print(GLib.markup_escape_text(" ".join(sys.argv[1:])).replace("&", "\\&"))
+  '';
 in
 
 rec {
@@ -105,6 +121,12 @@ rec {
     desktop_checksums = {
       source = ./files/scripts/desktop_checksums.sh;
       target = "icpc/scripts/desktop_checksums.sh";
+      mode = "0755";
+    };
+
+    escape_markup = {
+      source = "${escapeMarkup}/bin/escape-markup";
+      target = "icpc/scripts/bin/escape-markup";
       mode = "0755";
     };
 
