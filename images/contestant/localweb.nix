@@ -2,9 +2,12 @@
 
 let
   # C and C++ share the same cppreference book; only the index page differs.
+  # The archive has three top-level entries (reference/ plus two doxygen tag
+  # files), not one, so fetchzip's default stripRoot would refuse it.
   cppreferenceDoc = pkgs.fetchzip {
     url = "https://github.com/PeterFeicht/cppreference-doc/releases/download/v20250209/html-book-20250209.tar.xz";
     hash = "sha256-bgflZLipY+lBn8tNYmSgPurErGBO2OGF3J0wyTiS0TE=";
+    stripRoot = false;
   };
 
   openjdk17Doc = pkgs.fetchurl {
@@ -48,9 +51,12 @@ let
   # image's actual python3 version), only this rolling, unversioned zip -
   # bump the hash here if upstream republishes it and the fetch starts
   # failing. PyPy3 has no separate stdlib doc set; it reuses this.
+  # The archive has many top-level entries (index.html, library/, etc.), not
+  # one, so fetchzip's default stripRoot would refuse it.
   python3Docs = pkgs.fetchzip {
     url = "https://docs.python.org/3.14/archives/python-3.14-docs-html.zip";
-    hash = "sha256-N0i4IfRpsacJF/jA/dqSc3rzudR2Rs53zgm+YHvtPwo=";
+    hash = "sha256-0JhSkxOfPG505vP0DSwHkSqJq3hpbTqfQi3TyVKFNzM=";
+    stripRoot = false;
   };
 
   docsIndex = pkgs.replaceVars ./files/docs-index.html {
