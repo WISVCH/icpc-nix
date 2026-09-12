@@ -72,6 +72,13 @@ pkgs.testers.runNixOSTest {
     # single-boot test VM.
     systemd.services.warm-fs-cache.enable = lib.mkForce false;
 
+    # images/contestant/base.nix forces networking.useDHCP = true globally;
+    # left at its default (null -> inherits that global true) for eth1,
+    # the static address below silently never gets applied at all (no
+    # network-addresses-eth1 unit even runs) - confirmed by CI, where
+    # "domjudge" (no such override) got its static IP fine but "machine"
+    # never did, leaving it with no route to "domjudge" whatsoever.
+    networking.interfaces.eth1.useDHCP = lib.mkForce false;
     networking.interfaces.eth1.ipv4.addresses = [
       { address = machineIp; prefixLength = 24; }
     ];
