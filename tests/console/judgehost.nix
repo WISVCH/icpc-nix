@@ -53,6 +53,17 @@
     assert loaded_image_match, f"unexpected `docker load` output: {load_output!r}"
     judgehost_image = loaded_image_match.group(1)
 
+    # This is the first subtest to touch "domjudge" in this suite (unlike
+    # tests/contestant, where domjudge.nix already does this wait before
+    # firewall.nix runs) - restapi.secret doesn't exist until domserver has
+    # finished its first-boot database install, so wait for that first.
+    print("Waiting for DOMjudge's database install/migration to finish...")
+    domjudge.wait_for_unit("podman-mariadb.service")
+    domjudge.wait_for_unit("podman-domserver.service")
+    domjudge.wait_until_succeeds(
+        "curl --fail --silent http://127.0.0.1/api/v4/version", timeout=600
+    )
+
     print("Extracting the judgehost REST password domserver generated on first boot")
     password = domjudge.succeed(
         "grep -v '^#' /opt/domjudge/domserver/etc/restapi.secret | cut -f4"
