@@ -21,8 +21,13 @@
     # The generated ruleset actually loaded, with the shape we expect -
     # catches Nix-level mistakes (bad syntax, a rule silently missing)
     # independent of what the sandboxed test network can actually reach.
+    # nft resolves "contestant" to a UID at load time and may print either
+    # the name or the raw UID back on list, so accept either.
     ruleset = machine.succeed("nft list ruleset")
-    assert "meta skuid contestant" in ruleset, "contestant scoping rule missing from nftables ruleset"
+    contestant_uid = machine.succeed("id -u contestant").strip()
+    assert (
+        "skuid contestant" in ruleset or f"skuid {contestant_uid}" in ruleset
+    ), "contestant scoping rule missing from nftables ruleset"
     assert "drop" in ruleset, "no default-drop rule found in nftables ruleset"
 
     # contestant can still reach an allowed same-host service (the
