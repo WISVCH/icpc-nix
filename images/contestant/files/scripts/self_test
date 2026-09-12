@@ -130,7 +130,10 @@ print_check "Checking if the firewall is enabled"
 check_service 'nftables'
 
 print_check "Testing access to DOMjudge is successful for contestant"
-su - contestant -c 'wget -T 5 -t 1 -O- --no-check-certificate @domjudge_url@' 2>/dev/null | grep "DOMjudge" > /dev/null
+# -L: DOMjudge (Symfony) 302s an unauthenticated GET / to /login - without
+# following that, this greps the short redirect stub itself, which never
+# contains the literal string "DOMjudge".
+su - contestant -c 'wget -T 5 -t 1 -L -O- --no-check-certificate @domjudge_url@' 2>/dev/null | grep "DOMjudge" > /dev/null
 check_return $?
 
 print_check "Testing direct internet access is disabled"
