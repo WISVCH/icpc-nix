@@ -21,7 +21,7 @@ let
   machineIp = "192.168.1.2";
   testVars = vars // { domjudge_url = domjudgeUrl; judge_ip = domjudgeIp; };
 
-  domjudgeCert = import ./domjudge/cert.nix {
+  domjudgeCert = import ../domjudge/cert.nix {
     inherit pkgs;
     commonName = domjudgeUrl;
   };
@@ -89,7 +89,7 @@ pkgs.testers.runNixOSTest {
     security.pki.certificateFiles = [ domjudgeCert.cert ];
   };
 
-  nodes.domjudge = import ./domjudge/module.nix {
+  nodes.domjudge = import ../domjudge/module.nix {
     inherit domjudgeIp domjudgeUrl;
     cert = domjudgeCert;
   };
