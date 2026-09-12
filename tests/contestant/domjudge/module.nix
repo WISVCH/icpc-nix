@@ -4,7 +4,12 @@
 # images/console/home/icpcadmin.nix's judgehost pull) running as containers,
 # fronted by a native nginx that terminates TLS with a test-only cert (see
 # cert.nix) so self_test's unmodified `https://` autologin check can trust it.
-{ domjudgeIp, domjudgeUrl, cert }:
+#
+# Also hosts hostnames_api and pdns (see tests/contestant/hostname.nix) -
+# production co-locates all three behind the same judge_ip (see
+# images/contestant/firewall.nix and vars.nix), so this ephemeral node
+# mirrors that instead of standing up separate test nodes for them.
+{ domjudgeIp, domjudgeUrl, cert, hostnamesApiUrl, hostnamesCert, dnsApiUrl, dnsCert }:
 { pkgs, lib, ... }:
 let
   mariadbImage = pkgs.dockerTools.pullImage {
@@ -22,6 +27,45 @@ let
     finalImageName = "ghcr.io/wisvch/domjudge-packaging/domserver";
     finalImageTag = "packaging-e8150e1";
   };
+
+  # Built from chipcie-dns's own Dockerfiles by its build-images workflow
+  # (WISVCH/chipcie-dns#10) - that repo is private, but these two packages
+  # were made public independently so no registry credentials are needed
+  # here, same as the domserver image above.
+  hostnamesImage = pkgs.dockerTools.pullImage {
+    imageName = "ghcr.io/wisvch/chipcie-dns/hostnames";
+    imageDigest = "sha256:55903382833d5127b9a464f3086a029fb44222d856e3d32263f1c2977c29fbb5";
+    sha256 = "sha256-/w2ZBJYz9rjy4xgHrMf+Ewyu3DHpeSsCXjYwN0GuhWE=";
+    finalImageName = "ghcr.io/wisvch/chipcie-dns/hostnames";
+    finalImageTag = "latest";
+  };
+
+  pdnsImage = pkgs.dockerTools.pullImage {
+    imageName = "ghcr.io/wisvch/chipcie-dns/pdns";
+    imageDigest = "sha256:bfcbd99767aade60ab4579365df7c036af2bd069e142caabd5a528c21cf5c0df";
+    sha256 = "sha256-NN4Q6MW0EWC4znN+TEW867VCbCnv7xlKPt8545W58FE=";
+    finalImageName = "ghcr.io/wisvch/chipcie-dns/pdns";
+    finalImageTag = "latest";
+  };
+
+  # The real chipcie-dns image bakes a production PowerDNS API key into
+  # /etc/powerdns/pdns.conf. set_hostname.sh hardcodes API_KEY=changeme
+  # (see the TODO next to it in images/contestant/files/scripts -
+  # the real key can't be baked into this public repo until proper
+  # secrets handling exists), so this test-only config just matches that
+  # stub instead of touching the script. Everything else here mirrors
+  # chipcie-dns/powerdns/pdns.conf, including the zone already baked into
+  # the image's sqlite database at build time.
+  pdnsConf = pkgs.writeText "pdns.conf" ''
+    launch=gsqlite3
+    gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+    default-soa-content=chipcie.ch.tudelft.nl dnsmaster.@ 0 10800 3600 604800 3600
+    api=yes
+    webserver=yes
+    webserver-address=0.0.0.0
+    webserver-allow-from=0.0.0.0/0
+    api-key=changeme
+  '';
 
   # Matches WISVCH/domjudge-packaging's docker/docker-compose.yml example.
   mysqlRootPassword = "domjudge";
@@ -83,13 +127,46 @@ in
     wants = [ "podman-mariadb.service" ];
   };
 
+  # hostnames_api's own container CMD runs migrate + loaddata sticks +
+  # runserver on every start, so all of chipcie-dns's real sticks.yaml
+  # mappings are loaded with no extra provisioning here.
+  virtualisation.oci-containers.containers.hostnames = {
+    imageFile = hostnamesImage;
+    image = "ghcr.io/wisvch/chipcie-dns/hostnames:latest";
+    extraOptions = [ "--network=host" ];
+  };
+
+  virtualisation.oci-containers.containers.pdns = {
+    imageFile = pdnsImage;
+    image = "ghcr.io/wisvch/chipcie-dns/pdns:latest";
+    extraOptions = [
+      "--network=host"
+      "-v"
+      "${pdnsConf}:/etc/powerdns/pdns.conf:ro"
+    ];
+  };
+
   services.nginx = {
     enable = true;
-    virtualHosts.${domjudgeUrl} = {
-      onlySSL = true;
-      sslCertificate = cert.cert;
-      sslCertificateKey = cert.key;
-      locations."/".proxyPass = "http://127.0.0.1:80";
+    virtualHosts = {
+      ${domjudgeUrl} = {
+        onlySSL = true;
+        sslCertificate = cert.cert;
+        sslCertificateKey = cert.key;
+        locations."/".proxyPass = "http://127.0.0.1:80";
+      };
+      ${hostnamesApiUrl} = {
+        onlySSL = true;
+        sslCertificate = hostnamesCert.cert;
+        sslCertificateKey = hostnamesCert.key;
+        locations."/".proxyPass = "http://127.0.0.1:8000";
+      };
+      ${dnsApiUrl} = {
+        onlySSL = true;
+        sslCertificate = dnsCert.cert;
+        sslCertificateKey = dnsCert.key;
+        locations."/".proxyPass = "http://127.0.0.1:8081";
+      };
     };
   };
 }

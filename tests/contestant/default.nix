@@ -19,12 +19,31 @@ let
   domjudgeUrl = "domjudge.icpc-nix.test";
   domjudgeIp = "192.168.1.1";
   machineIp = "192.168.1.2";
+  # firewall.nix resolves vars.hostnames_api/vars.dns_api to vars.judge_ip
+  # (see images/contestant/firewall.nix and vars.nix) exactly the same way
+  # it resolves domjudge_url - overriding judge_ip here is enough to route
+  # both at the "domjudge" node too, with no separate vars needed.
   testVars = vars // { domjudge_url = domjudgeUrl; judge_ip = domjudgeIp; };
+  inherit (vars) hostnames_api dns_api dns_zone;
 
   domjudgeCert = import ./domjudge/cert.nix {
     inherit pkgs;
     commonName = domjudgeUrl;
   };
+  hostnamesCert = import ./domjudge/cert.nix {
+    inherit pkgs;
+    commonName = hostnames_api;
+  };
+  dnsCert = import ./domjudge/cert.nix {
+    inherit pkgs;
+    commonName = dns_api;
+  };
+
+  # A real serial/hostname pair from chipcie-dns's own
+  # hostnames_api/fixtures/sticks.yaml, baked into the hostnames image
+  # this test pulls - see tests/contestant/hostname.nix.
+  testSerial = "050157c4c93bb6047912ac42cfb1d3f4e02d2b78412d9bec99236cad3693ef69b2b700000000000000000000f5642fe4ff8c1310815581077faa8e76";
+  testHostname = "pc1";
 
   subtests = [
     # Must run before firewall.nix: firewall.nix's regression test leaves
@@ -32,6 +51,7 @@ let
     # effect, which would break this subtest's "not configured yet"
     # assertion.
     (import ./domjudge.nix { inherit domjudgeUrl; })
+    (import ./hostname.nix { inherit dns_zone testHostname; })
     (import ./firewall.nix { inherit pkgs self inputs system vars; })
   ];
 
@@ -84,14 +104,43 @@ pkgs.testers.runNixOSTest {
     ];
     networking.extraHosts = "${domjudgeIp} ${domjudgeUrl}\n";
 
-    # Trust the "domjudge" node's test-only cert, so self_test's unmodified,
-    # `-k`-less `curl https://@domjudge_url@/...` autologin check succeeds.
-    security.pki.certificateFiles = [ domjudgeCert.cert ];
+    # Trust the "domjudge" node's test-only certs, so self_test's and
+    # set_hostname.sh's unmodified, `-k`-less `curl https://...` calls
+    # succeed against all three ephemeral services.
+    security.pki.certificateFiles = [ domjudgeCert.cert hostnamesCert.cert dnsCert.cert ];
+
+    # runNixOSTest hardcodes the root disk's own QEMU serial to the literal
+    # string "root" (nixos/modules/virtualisation/qemu-vm.nix builds that
+    # drives list itself, with no per-test override point), so
+    # set_hostname.sh's `udevadm info | grep ID_SERIAL_SHORT` would
+    # otherwise always read "root" here. Force it to a real serial from
+    # chipcie-dns's fixtures instead - test-only, no production code
+    # changes needed.
+    services.udev.extraRules = ''
+      KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}="${testSerial}"
+    '';
+
+    # firstboot.service (icpc.nix) only orders after network-online.target,
+    # which this VM reaches via eth0's DHCP alone - it says nothing about
+    # eth1's static address, which stays down until the domjudge-selftest
+    # subtest explicitly starts network-addresses-eth1.service (see the
+    # comment there). Without this, firstboot's now-uncommented
+    # set_hostname.sh call races that and near-certainly runs before eth1
+    # (and therefore hostnames_api/dns_api, both only reachable over it) is
+    # up - and since firstboot is a oneshot, a failed run never retries.
+    systemd.services.firstboot = {
+      after = [ "network-addresses-eth1.service" ];
+      wants = [ "network-addresses-eth1.service" ];
+    };
   };
 
   nodes.domjudge = import ./domjudge/module.nix {
     inherit domjudgeIp domjudgeUrl;
     cert = domjudgeCert;
+    hostnamesApiUrl = hostnames_api;
+    dnsApiUrl = dns_api;
+    hostnamesCert = hostnamesCert;
+    dnsCert = dnsCert;
   };
 
   # Deliberately not waiting on multi-user.target: it pulls in unrelated
