@@ -30,8 +30,8 @@
     # nixpkgs' own nixos/tests/docker-rootless.nix, which this follows.
     console.succeed("loginctl enable-linger judgehost")
     sudo = (
-        f"XDG_RUNTIME_DIR=/run/user/${toString judgehostUid} "
-        f"DOCKER_HOST=unix:///run/user/${toString judgehostUid}/docker.sock "
+        "XDG_RUNTIME_DIR=/run/user/${toString judgehostUid} "
+        "DOCKER_HOST=unix:///run/user/${toString judgehostUid}/docker.sock "
         "sudo --preserve-env=XDG_RUNTIME_DIR,DOCKER_HOST -u judgehost"
     )
     console.wait_until_succeeds(f"{sudo} systemctl --user is-active docker.service")
