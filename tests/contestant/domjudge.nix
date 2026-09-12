@@ -1,4 +1,4 @@
-{ domjudgeUrl, domjudgeIp }:
+{ domjudgeUrl }:
 
 # Subtest fragment for tests/contestant/default.nix.
 #
@@ -39,11 +39,11 @@
     # from whatever console this test driver actually reads, potentially
     # hiding real failures (e.g. a systemd service that silently never ran).
     print("--- diagnostics: machine eth1 / hosts / connectivity to domjudge ---")
+    print(machine.execute("ip link show")[1])
     print(machine.execute("ip -4 addr show eth1")[1])
-    print(machine.execute("ip route")[1])
-    print(machine.execute("cat /etc/hosts")[1])
-    print(machine.execute("ping -c 2 -W 3 ${domjudgeIp}")[1])
-    print(machine.execute("curl -v --max-time 5 http://${domjudgeIp}/ 2>&1 | tail -40")[1])
+    print(machine.execute("systemctl list-units --all --no-legend | grep -i eth1")[1])
+    print(machine.execute("systemctl status network-addresses-eth1.service --no-pager -l")[1])
+    print(machine.execute("journalctl -u network-addresses-eth1.service --no-pager")[1])
     print("--- end diagnostics ---")
 
     print("DOMjudge is up - seeding a test team account via users/accounts")
