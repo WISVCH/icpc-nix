@@ -23,6 +23,17 @@
     # can't rely on that subtest having already waited for the unit.
     machine.wait_for_unit("squid.service")
 
+    # network-addresses-eth1.service (which actually assigns eth1 its static
+    # IP - see default.nix) is enabled but only gets pulled in via
+    # multi-user.target/network-setup.target, which this test deliberately
+    # never waits for (see the comment at the bottom of default.nix - the
+    # firstboot/cups/GUI chain hangs boot indefinitely in this VM). Confirmed
+    # via CI: the unit exists but sits "inactive (dead)" with zero journal
+    # entries indefinitely, leaving eth1 itself DOWN. Start it directly
+    # rather than depend on ever reaching that target.
+    machine.succeed("systemctl start network-addresses-eth1.service")
+    print(machine.succeed("ip -4 addr show eth1"))
+
     domjudge.wait_for_unit("podman-mariadb.service")
     domjudge.wait_for_unit("podman-domserver.service")
     domjudge.wait_for_unit("nginx.service")
@@ -31,20 +42,6 @@
     domjudge.wait_until_succeeds(
         "curl --fail --silent http://127.0.0.1/api/v4/version", timeout=600
     )
-
-    # Diagnostics: machine.execute (not .succeed) always captures a
-    # command's own stdout directly via the test backdoor, unlike console
-    # dmesg/journal output - which images/common.nix's
-    # services.journald.extraConfig (TTYPath=/dev/tty1) may be routing away
-    # from whatever console this test driver actually reads, potentially
-    # hiding real failures (e.g. a systemd service that silently never ran).
-    print("--- diagnostics: machine eth1 / hosts / connectivity to domjudge ---")
-    print(machine.execute("ip link show")[1])
-    print(machine.execute("ip -4 addr show eth1")[1])
-    print(machine.execute("systemctl list-units --all --no-legend | grep -i eth1")[1])
-    print(machine.execute("systemctl status network-addresses-eth1.service --no-pager -l")[1])
-    print(machine.execute("journalctl -u network-addresses-eth1.service --no-pager")[1])
-    print("--- end diagnostics ---")
 
     print("DOMjudge is up - seeding a test team account via users/accounts")
     # The TSV accounts format requires the username to encode an existing
