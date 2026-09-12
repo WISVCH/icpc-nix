@@ -15,6 +15,7 @@
     ./monitoring.nix
     ./printer.nix
     ./scripts.nix
+    ./usbguard.nix
     ./vmtouch.nix
   ];
 }
