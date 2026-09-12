@@ -21,9 +21,49 @@
   script = ''
     import json
 
-    print("Waiting for set_hostname.sh to run as part of firstboot.service")
+    print("Checking the test-only udev rule actually spoofed the root disk's serial")
+    root_mnt = machine.succeed("findmnt -n -o SOURCE /").strip()
+    udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
+    assert "ID_SERIAL_SHORT=" in udev_info, (
+        f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
+        "services.udev.extraRules on the machine node in default.nix), "
+        f"got udevadm info:\n{udev_info}"
+    )
+
+    # eth1 (machine <-> domjudge) is enabled but only gets pulled in via
+    # multi-user.target/network-setup.target, which this test deliberately
+    # never waits for (see domjudge.nix and the comment at the bottom of
+    # default.nix) - start it directly rather than depend on it, same as
+    # domjudge-selftest does.
+    machine.succeed("systemctl start network-addresses-eth1.service")
+
+    # firstboot.service (icpc.nix) is a oneshot with no retry, and its own
+    # organic first run happens within seconds of boot - long before
+    # hostnames_api finishes migrating/loading fixtures (~3 minutes) or
+    # pdns is listening. That first run's set_hostname.sh call is expected
+    # to fail; wait for both services to actually be ready, then force a
+    # clean second run instead of racing the first one.
+    print("Waiting for hostnames_api and pdns to actually be ready on the domjudge node")
+    domjudge.wait_for_unit("podman-hostnames.service")
+    domjudge.wait_for_unit("podman-pdns.service")
+    domjudge.wait_until_succeeds(
+        "curl --fail --silent http://127.0.0.1:8000/hostnames/", timeout=240
+    )
+    domjudge.wait_until_succeeds(
+        "curl --fail --silent -H 'X-API-Key: changeme' "
+        "http://127.0.0.1:8081/api/v1/servers/localhost",
+        timeout=60,
+    )
+
+    print("Re-running firstboot now that its dependencies are actually ready")
+    # --no-block: on_boot.sh ends in the same interactive prompt mentioned
+    # above, so ExecStart never returns - `systemctl restart` without this
+    # would hang here forever waiting for the job to finish.
+    machine.succeed("systemctl restart --no-block firstboot.service")
+
+    print("Waiting for set_hostname.sh to apply the fetched hostname")
     machine.wait_until_succeeds(
-        'test "$(hostname)" = "${testHostname}"', timeout=120
+        'test "$(hostname)" = "${testHostname}"', timeout=60
     )
 
     print("Checking pdns actually got the A record set_hostname.sh PATCHed in")

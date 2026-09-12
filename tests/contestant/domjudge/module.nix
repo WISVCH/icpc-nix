@@ -82,9 +82,12 @@ in
   # nixosTest's ~1GB default is nowhere near enough to run mariadb and a
   # PHP-FPM/nginx DOMjudge stack at the same time - CI observed mariadb's own
   # startup healthcheck timing out and exiting under that default, taking
-  # podman-domserver.service down with it (dependsOn).
-  virtualisation.memorySize = 4096;
-  virtualisation.cores = 2;
+  # podman-domserver.service down with it (dependsOn). Bumped further after
+  # adding hostnames/pdns alongside them - CI observed the (otherwise
+  # trivial) hostnames image taking well over two minutes just to load
+  # under contention from mariadb/domserver's own migration work.
+  virtualisation.memorySize = 6144;
+  virtualisation.cores = 3;
   virtualisation.diskSize = 8192;
 
   virtualisation.podman.enable = true;
@@ -159,7 +162,15 @@ in
         onlySSL = true;
         sslCertificate = hostnamesCert.cert;
         sslCertificateKey = hostnamesCert.key;
-        locations."/".proxyPass = "http://127.0.0.1:8000";
+        # hostnames_api runs with DEBUG=False and ALLOWED_HOSTS =
+        # ["chipcie.ch.tudelft.nl", "127.0.0.1"] (see chipcie-dns/hostnames/
+        # hostnames/settings.py) - Django validates the Host header it
+        # actually receives, so this must match "127.0.0.1" regardless of
+        # what nginx's own default Host-forwarding behavior would send.
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:8000";
+          extraConfig = "proxy_set_header Host 127.0.0.1;";
+        };
       };
       ${dnsApiUrl} = {
         onlySSL = true;
