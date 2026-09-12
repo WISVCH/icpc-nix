@@ -23,5 +23,14 @@
         "curl --fail --silent --show-error --max-time 5 "
         "-x http://localhost:3128 http://localhost:8000/ >/dev/null"
     )
+
+    # Regression test for the write-path conflict that the previous fix
+    # attempt introduced: set_domjudge_creds.sh writes real credentials to
+    # the same path (/etc/squid/autologin.conf) that firewall.nix seeds a
+    # placeholder into via systemd.tmpfiles.rules, then chowns/chmods it and
+    # restarts squid. That must not break squid.
+    machine.succeed("/icpc/scripts/set_domjudge_creds.sh testteam testpass")
+    machine.wait_for_unit("squid.service")
+    machine.wait_for_open_port(3128)
   '';
 }

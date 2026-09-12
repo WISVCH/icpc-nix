@@ -8,13 +8,18 @@ in
 
   boot.kernelParams = [ "net.ipv4.ip_forward=1" "net.ipv6.conf.all.forwarding=1" "net.ipv4.conf.all.send_redirects=0" ];
 
-  environment.etc."autologin" = {
-    text = ''
-      # Placeholder for domjudge autologin rules.
-    '';
-    target = "squid/autologin.conf";
-    mode = "0644";
-  };
+  # Seed a real, writable placeholder so squid's `include` below can always
+  # parse, even before set_domjudge_creds.sh has ever run. Type "f" only
+  # creates the file if it's missing, so a later rebuild never clobbers
+  # credentials set_domjudge_creds.sh has already written. A NixOS-managed
+  # environment.etc entry here would make this path a read-only Nix-store
+  # symlink, which conflicts with set_domjudge_creds.sh's runtime `cat >` /
+  # chmod / chown on this same path (see
+  # images/contestant/files/scripts/set_domjudge_creds.sh) - that conflict
+  # is why the include below was previously commented out instead of fixed.
+  systemd.tmpfiles.rules = [
+    "f /etc/squid/autologin.conf 0640 squid squid - #placeholder"
+  ];
 
   networking.nftables = {
     enable = true;
@@ -63,6 +68,14 @@ in
   systemd.services.squid.after = [ "resolvconf.service" ];
   services.squid = {
     enable = true;
+    # The `include /etc/squid/autologin.conf` below points at a path that's
+    # only ever seeded/rewritten at runtime (see the tmpfiles rule above and
+    # set_domjudge_creds.sh) - it never exists in the build sandbox, so
+    # nixpkgs's default build-time `squid -k parse` check (validateConfig)
+    # would fail on every build, unconditionally. The VM test still catches
+    # real breakage: squid actually parses and starts there, against the
+    # real runtime file.
+    validateConfig = false;
     configText = ''
       http_port 3128
       
@@ -113,7 +126,7 @@ in
       acl autologin url_regex ^http://${domjudge_url}/login
       acl autologin url_regex ^https://${domjudge_url}/login
 
-      # include /etc/squid/autologin.conf
+      include /etc/squid/autologin.conf
 
       http_access allow allowed_urls
       http_access deny all
