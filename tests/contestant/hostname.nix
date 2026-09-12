@@ -23,6 +23,14 @@
 
     print("Checking the test-only udev rule actually spoofed the root disk's serial")
     root_mnt = machine.succeed("findmnt -n -o SOURCE /").strip()
+    # The root block device's udev database entry is populated once, very
+    # early in boot (before/around switch-root) - CI showed it can still be
+    # carrying whatever an earlier pass set (ID_SERIAL=root, no
+    # ID_SERIAL_SHORT at all) with no guarantee our rule has been
+    # (re-)evaluated against it yet by the time this subtest runs. Force a
+    # fresh "add" event for it explicitly rather than relying on that.
+    machine.succeed(f"udevadm trigger --action=add --name-match={root_mnt}")
+    machine.succeed("udevadm settle")
     udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
     assert "ID_SERIAL_SHORT=" in udev_info, (
         f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
