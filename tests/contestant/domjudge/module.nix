@@ -17,7 +17,7 @@ let
   mariadbImage = pkgs.dockerTools.pullImage {
     imageName = "mariadb";
     imageDigest = "sha256:a75328dabed542a3b704efe54086071cb3f99e6a640cc8a18d7273bc4de2e5e7";
-    sha256 = lib.fakeSha256;
+    sha256 = "sha256-TN7daYQGIFfIpTd0Hq1K+M3sq2ZtvfkvL/UA+SA9CLo=";
     finalImageName = "mariadb";
     finalImageTag = "11";
   };
