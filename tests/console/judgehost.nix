@@ -65,6 +65,18 @@
     )
 
     print("Extracting the judgehost REST password domserver generated on first boot")
+    # domserver's own first-boot install can crash and get restarted by
+    # systemd part-way through (CI observed a transient "MySQL server has
+    # gone away" under memory pressure) - podman-domserver.service starting
+    # again re-runs 50-domjudge.sh, which can briefly leave restapi.secret
+    # missing, or (if it now sees an already-installed DB but no matching
+    # secret file) written with a "NOTE(password-mismatch)" placeholder
+    # instead of a real password. Wait for a clean, freshly-generated file.
+    domjudge.wait_until_succeeds(
+        "test -s /opt/domjudge/domserver/etc/restapi.secret && "
+        "! grep -q '^# NOTE' /opt/domjudge/domserver/etc/restapi.secret",
+        timeout=120,
+    )
     password = domjudge.succeed(
         "grep -v '^#' /opt/domjudge/domserver/etc/restapi.secret | cut -f4"
     ).strip()

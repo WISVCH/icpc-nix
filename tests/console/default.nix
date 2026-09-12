@@ -59,6 +59,16 @@ pkgs.testers.runNixOSTest {
       ../../images/common.nix
     ];
 
+    # nixosTest's ~1GB default is nowhere near enough for a full XFCE
+    # desktop plus a nested, privileged judgehost container that itself
+    # compiles/runs JVM-based submissions - CI observed domserver's own
+    # mariadb dying mid-request ("MySQL server has gone away") under the
+    # resulting memory pressure, which looks like host-level contention
+    # bleeding into the sibling "domjudge" node. Same rationale as
+    # ../domjudge/module.nix's own bump for its heavier-than-default needs.
+    virtualisation.memorySize = 4096;
+    virtualisation.cores = 2;
+
     # images/console/base.nix forces networking.useDHCP = true globally;
     # left at its default (null -> inherits that global true) for eth1, the
     # static address below would otherwise silently never get applied - see
