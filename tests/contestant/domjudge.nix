@@ -1,4 +1,4 @@
-{ domjudgeUrl }:
+{ domjudgeUrl, domjudgeIp }:
 
 # Subtest fragment for tests/contestant/default.nix.
 #
@@ -31,6 +31,20 @@
     domjudge.wait_until_succeeds(
         "curl --fail --silent http://127.0.0.1/api/v4/version", timeout=600
     )
+
+    # Diagnostics: machine.execute (not .succeed) always captures a
+    # command's own stdout directly via the test backdoor, unlike console
+    # dmesg/journal output - which images/common.nix's
+    # services.journald.extraConfig (TTYPath=/dev/tty1) may be routing away
+    # from whatever console this test driver actually reads, potentially
+    # hiding real failures (e.g. a systemd service that silently never ran).
+    print("--- diagnostics: machine eth1 / hosts / connectivity to domjudge ---")
+    print(machine.execute("ip -4 addr show eth1")[1])
+    print(machine.execute("ip route")[1])
+    print(machine.execute("cat /etc/hosts")[1])
+    print(machine.execute(f"ping -c 2 -W 3 {domjudgeIp}")[1])
+    print(machine.execute(f"curl -v --max-time 5 http://{domjudgeIp}/ 2>&1 | tail -40")[1])
+    print("--- end diagnostics ---")
 
     print("DOMjudge is up - seeding a test team account via users/accounts")
     # The TSV accounts format requires the username to encode an existing
