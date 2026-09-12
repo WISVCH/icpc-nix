@@ -123,11 +123,14 @@ pkgs.testers.runNixOSTest {
     # rule, which likely GOTOs past everything else for a recognized
     # virtio-blk device - including our own 99-numbered rule. Use
     # services.udev.packages instead to land in an early "10-"-numbered
-    # file (runs *before* that GOTO), and ":=" so the assignment is
-    # immutable and can't be overwritten by whatever runs after it either.
+    # file, so ours runs *before* that GOTO. (":=" was tried for good
+    # measure too, to survive being overwritten downstream, but ENV{}
+    # only accepts '==', '!=', '=' or '+=' - confirmed locally via
+    # `udevadm verify`, which is also how this exact rule was checked
+    # before pushing.)
     services.udev.packages = [
       (pkgs.writeTextDir "etc/udev/rules.d/10-spoof-test-serial.rules" ''
-        KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}:="${testSerial}"
+        KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}="${testSerial}"
       '')
     ];
 
