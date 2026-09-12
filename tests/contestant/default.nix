@@ -116,9 +116,20 @@ pkgs.testers.runNixOSTest {
     # otherwise always read "root" here. Force it to a real serial from
     # chipcie-dns's fixtures instead - test-only, no production code
     # changes needed.
-    services.udev.extraRules = ''
-      KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}="${testSerial}"
-    '';
+    #
+    # CI showed services.udev.extraRules (which NixOS places in a late
+    # "99-local.rules") never taking effect here: the device's own
+    # ID_SERIAL=root already gets set by an earlier persistent-storage
+    # rule, which likely GOTOs past everything else for a recognized
+    # virtio-blk device - including our own 99-numbered rule. Use
+    # services.udev.packages instead to land in an early "10-"-numbered
+    # file (runs *before* that GOTO), and ":=" so the assignment is
+    # immutable and can't be overwritten by whatever runs after it either.
+    services.udev.packages = [
+      (pkgs.writeTextDir "etc/udev/rules.d/10-spoof-test-serial.rules" ''
+        KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}:="${testSerial}"
+      '')
+    ];
 
     # firstboot.service (icpc.nix) only orders after network-online.target,
     # which this VM reaches via eth0's DHCP alone - it says nothing about
