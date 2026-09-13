@@ -22,18 +22,19 @@ let
   cid = "icpcnixtest";
 
   languages = [
-    { id = "c"; file = ./submissions/solutions/sum.c; entryPointFlag = ""; }
-    { id = "cpp"; file = ./submissions/solutions/sum.cpp; entryPointFlag = ""; }
-    { id = "java"; file = ./submissions/solutions/Main.java; entryPointFlag = ""; }
+    { id = "c"; file = ./submissions/solutions/sum.c; fileName = "sum.c"; entryPointFlag = ""; }
+    { id = "cpp"; file = ./submissions/solutions/sum.cpp; fileName = "sum.cpp"; entryPointFlag = ""; }
+    { id = "java"; file = ./submissions/solutions/Main.java; fileName = "Main.java"; entryPointFlag = ""; }
     {
       id = "kotlin";
       file = ./submissions/solutions/Main.kt;
+      fileName = "Main.kt";
       # Kotlin compiles a top-level `fun main()` in Main.kt to class MainKt -
       # DOMjudge's kotlin language requires an explicit entry_point since it
       # can't infer this itself (unlike java's 'java_javac_detect' script).
       entryPointFlag = "-F entry_point=MainKt ";
     }
-    { id = "python3"; file = ./submissions/solutions/sum.py; entryPointFlag = ""; }
+    { id = "python3"; file = ./submissions/solutions/sum.py; fileName = "sum.py"; entryPointFlag = ""; }
   ];
 
   submitOne = lang: ''
@@ -42,7 +43,13 @@ let
         "curl --fail --silent -u testteam:testpass "
         "-F problem=sum -F language=${lang.id} "
         "${lang.entryPointFlag}"
-        "-F 'code[]=@${lang.file}' "
+        # Without an explicit filename, curl's @path upload uses the literal
+        # Nix store basename (e.g. "gacxd0...-Main.java") as the submitted
+        # filename - harmless for most languages, but javac requires a
+        # public class's file to be named exactly after the class, so java
+        # submissions failed to compile ("class Main is public, should be
+        # declared in a file named Main.java") until this pinned it back.
+        "-F 'code[]=@${lang.file};filename=${lang.fileName}' "
         "http://127.0.0.1/api/v4/contests/${cid}/submissions"
     ))
     verdict = wait_for_verdict("${cid}", submission["id"])
