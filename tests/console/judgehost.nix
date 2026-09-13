@@ -65,20 +65,26 @@
     )
 
     print("Extracting the judgehost REST password domserver generated on first boot")
-    # domserver's own first-boot install can crash and get restarted by
-    # systemd part-way through (CI observed a transient "MySQL server has
-    # gone away" under memory pressure) - podman-domserver.service starting
-    # again re-runs 50-domjudge.sh, which can briefly leave restapi.secret
-    # missing, or (if it now sees an already-installed DB but no matching
-    # secret file) written with a "NOTE(password-mismatch)" placeholder
-    # instead of a real password. Wait for a clean, freshly-generated file.
+    # restapi.secret lives inside the domserver *container* - module.nix's
+    # `--network=host` only shares networking with the "domjudge" node, not
+    # its filesystem, so this has to go through `podman exec`, same as the
+    # api:call invocations in tests/contestant/domjudge.nix.
+    #
+    # podman-domserver.service could in principle also crash/restart
+    # part-way through its first-boot install (this repo has seen it happen
+    # from an under-sized mariadb max_allowed_packet - see module.nix), which
+    # would leave restapi.secret briefly missing or (if it then sees an
+    # already-installed DB with no matching secret file) written with a
+    # "NOTE(password-mismatch)" placeholder instead of a real password - wait
+    # for a clean, freshly-generated file rather than a one-shot read.
+    secret = "/opt/domjudge/domserver/etc/restapi.secret"
     domjudge.wait_until_succeeds(
-        "test -s /opt/domjudge/domserver/etc/restapi.secret && "
-        "! grep -q '^# NOTE' /opt/domjudge/domserver/etc/restapi.secret",
+        f"podman exec domserver sh -c "
+        f"'test -s {secret} && ! grep -q \"^# NOTE\" {secret}'",
         timeout=120,
     )
     password = domjudge.succeed(
-        "grep -v '^#' /opt/domjudge/domserver/etc/restapi.secret | cut -f4"
+        f"podman exec domserver sh -c \"grep -v '^#' {secret} | cut -f4\""
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
@@ -90,7 +96,7 @@
 
     print("Waiting for domserver to see the judgehost register")
     admin_password = domjudge.succeed(
-        "cat /opt/domjudge/domserver/etc/initial_admin_password.secret"
+        "podman exec domserver cat /opt/domjudge/domserver/etc/initial_admin_password.secret"
     ).strip()
     domjudge.wait_until_succeeds(
         f"curl --fail --silent -u admin:{admin_password} "
