@@ -33,37 +33,31 @@
     machine.succeed("udevadm settle")
     udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
 
-    # Two prior CI attempts (99-numbered extraRules, then an early
-    # 10-numbered services.udev.packages entry) both failed to make
-    # ID_SERIAL_SHORT show up at all here, for reasons neither reproduced
-    # locally against a real (non-virtio) disk. Always print a full verbose
-    # dry-run trace so a failure is diagnosable from this one run instead
-    # of costing another CI round-trip to add logging after the fact.
-    # The previous version of this diagnostic used plain `udevadm test`,
-    # which - confirmed by its own trace - only reads systemd's own bundled
-    # default rules (.../lib/udev/rules.d), never /etc/udev/rules.d where
-    # NixOS actually places services.udev.packages contributions. Pass
-    # --extra-rules-dir explicitly so the dry run actually considers the
-    # same ruleset the real daemon uses, and confirm the file is on disk
-    # at all first.
-    # CI showed the file genuinely isn't there: `ls /etc/udev/rules.d/ |
-    # grep spoof` came back empty, even though the build-time log clearly
-    # showed it being copied into the merged "udev-rules" derivation
-    # output. So /etc/udev/rules.d isn't actually wired to that output the
-    # way expected - find out where (if anywhere) the file really lands.
-    find_result = machine.succeed(
-        "find / -xdev -iname '*spoof-test-serial*' 2>/dev/null || true"
+    # Three prior CI attempts (99-numbered extraRules, early 10-numbered
+    # services.udev.packages, then confirming via --extra-rules-dir) all
+    # failed to make ID_SERIAL_SHORT show up here. The last one found why:
+    # /etc/udev/rules.d holds only one unrelated symlink
+    # (75-persistent-net-generator.rules) - not even systemd's own bundled
+    # rules are there, so systemd-udevd isn't reading its ruleset from
+    # /etc/udev/rules.d on this system at all. Ask systemd-udevd itself,
+    # and the store, rather than guessing a fourth candidate path.
+    udevd_exec = machine.succeed(
+        "systemctl show systemd-udevd -p ExecStart --no-pager 2>&1 || true"
     )
-    print(f"find results for the rule file anywhere on disk:\n{find_result}")
-    etc_udev_listing = machine.succeed("ls -la /etc/udev/rules.d/ 2>&1 || true")
-    print(f"full /etc/udev/rules.d/ listing:\n{etc_udev_listing}")
-    etc_udev_readlink = machine.succeed("readlink -f /etc/udev/rules.d 2>&1 || true")
-    print(f"/etc/udev/rules.d resolves to:\n{etc_udev_readlink}")
-    devpath = machine.succeed(f"udevadm info --query=path --name={root_mnt}").strip()
-    udev_trace = machine.succeed(
-        f"udevadm test --extra-rules-dir=/etc/udev/rules.d --action=add -v {devpath} 2>&1 || true"
+    print(f"systemd-udevd ExecStart:\n{udevd_exec}")
+    store_udev_rules = machine.succeed(
+        "find /nix/store -maxdepth 1 -iname '*udev-rules*' 2>&1 || true"
+    ).strip()
+    print(f"udev-rules derivations in the store:\n{store_udev_rules}")
+    for rules_dir in store_udev_rules.splitlines():
+        listing = machine.succeed(
+            f"find {rules_dir} -iname '*spoof-test-serial*' 2>&1 || true"
+        )
+        print(f"spoof-rule search under {rules_dir}:\n{listing}")
+    current_system_rules = machine.succeed(
+        "readlink -f /run/current-system/sw/lib/udev/rules.d 2>&1 || true"
     )
-    print(f"udevadm test -v trace for {devpath}:\n{udev_trace}")
+    print(f"/run/current-system/sw/lib/udev/rules.d resolves to:\n{current_system_rules}")
 
     assert "ID_SERIAL_SHORT=" in udev_info, (
         f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
