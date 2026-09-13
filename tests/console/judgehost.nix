@@ -85,7 +85,7 @@
     # for a clean, freshly-generated file rather than a one-shot read.
     secret = "/opt/domjudge/domserver/etc/restapi.secret"
     domjudge.wait_until_succeeds(
-        f"podman exec domserver sh -c "
+        "podman exec domserver sh -c "
         f"'test -s {secret} && ! grep -q \"^# NOTE\" {secret}'",
         timeout=120,
     )
@@ -98,8 +98,8 @@
     # shell over the exact same virtual LAN judgehost's container will use.
     print("Sanity check: can console reach domjudge over HTTPS at all?")
     print(console.succeed(
-        f"curl -v --max-time 10 --cacert ${domjudgeCert.cert} "
-        f"https://${domjudgeUrl}/api/v4/version 2>&1 || true"
+        "curl -v --max-time 10 --cacert ${domjudgeCert.cert} "
+        "https://${domjudgeUrl}/api/v4/version 2>&1 || true"
     ))
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
@@ -126,11 +126,11 @@
     #    respects CURL_CA_BUNDLE/SSL_CERT_FILE for a custom trusted CA.
     console.succeed(
         f"{sudo} docker run -d --privileged --cgroupns=host --network=host "
-        f"-v /sys/fs/cgroup:/sys/fs/cgroup "
-        f"-v ${domjudgeCert.cert}:/domjudge-test-ca.pem:ro "
-        f"--add-host ${domjudgeUrl}:${domjudgeIp} "
+        "-v /sys/fs/cgroup:/sys/fs/cgroup "
+        "-v ${domjudgeCert.cert}:/domjudge-test-ca.pem:ro "
+        "--add-host ${domjudgeUrl}:${domjudgeIp} "
         f"-e DOMSERVER_BASEURL=https://${domjudgeUrl}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
-        f"-e CURL_CA_BUNDLE=/domjudge-test-ca.pem -e SSL_CERT_FILE=/domjudge-test-ca.pem "
+        "-e CURL_CA_BUNDLE=/domjudge-test-ca.pem -e SSL_CERT_FILE=/domjudge-test-ca.pem "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
 
