@@ -8,6 +8,11 @@ name: Check
 
 on:
   pull_request:
+    # Docs-only PRs are handled by docs.yml on the hosted runner instead -
+    # no need to spin up the self-hosted nix-builder for them.
+    paths-ignore:
+      - "docs/**"
+      - "zensical.toml"
 
 jobs:
   check:
