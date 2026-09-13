@@ -88,8 +88,13 @@
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
+    # --cgroupns=host on top of the original script's flags: upstream
+    # DOMjudge's create_cgroups (judge/create_cgroups.in) now requires
+    # cgroup v2 and explicitly checks /proc/self/cgroup for a real
+    # hierarchy prefix, which a container only sees with its cgroup
+    # namespace set to the host's rather than a fresh private one.
     console.succeed(
-        f"{sudo} docker run -d --privileged -v /sys/fs/cgroup:/sys/fs/cgroup "
+        f"{sudo} docker run -d --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup "
         f"-e DOMSERVER_BASEURL=http://${domjudgeIp}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
