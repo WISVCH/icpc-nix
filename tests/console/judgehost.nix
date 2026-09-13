@@ -12,7 +12,7 @@
 # the design discussion on issue #54: that would newly make icpc-nix, not
 # icpc-playbooks, responsible for judgehost startup, a bigger change than
 # this test needs).
-{ domjudgeIp }:
+{ domjudgeIp, domjudgeUrl, domjudgeCert }:
 {
   name = "judgehost-connect";
   script = ''
@@ -79,7 +79,7 @@
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
-    # Diverges from that script in two ways:
+    # Diverges from that script in a few ways:
     #  - --cgroupns=host: upstream DOMjudge's create_cgroups
     #    (judge/create_cgroups.in) now requires cgroup v2 and explicitly
     #    checks /proc/self/cgroup for a real hierarchy prefix, which a
@@ -88,14 +88,25 @@
     #    virtual LAN here (unlike a real contest, where judgehost and
     #    domserver are just two machines on the venue's own network) -
     #    Docker's default bridge network needs NAT/iptables plumbing to
-    #    reach across that LAN, which failed in CI ("Failed to connect to
-    #    <domjudgeIp> port 80 ... Couldn't connect to server"). Host
-    #    networking sidesteps that entirely, matching how module.nix
-    #    already avoids the same complexity for domserver/mariadb.
+    #    reach across that LAN. Host networking sidesteps that, matching
+    #    how module.nix already avoids the same complexity for
+    #    domserver/mariadb.
+    #  - https:// + --add-host + a mounted CA cert, not plain http://
+    #    <domjudgeIp>/: domserver's own bundled webserver only binds
+    #    127.0.0.1 inside its container (confirmed in CI - judgehost got
+    #    "Couldn't connect to server" on port 80 even with host networking
+    #    reaching the domjudge VM just fine) - module.nix's native nginx on
+    #    443 is the only thing actually reachable from elsewhere on the
+    #    network, same path self_test's own autologin check already uses.
+    #    curl (which judgedaemon shells out to, per its log messages)
+    #    respects CURL_CA_BUNDLE/SSL_CERT_FILE for a custom trusted CA.
     console.succeed(
         f"{sudo} docker run -d --privileged --cgroupns=host --network=host "
         f"-v /sys/fs/cgroup:/sys/fs/cgroup "
-        f"-e DOMSERVER_BASEURL=http://${domjudgeIp}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
+        f"-v ${domjudgeCert.cert}:/domjudge-test-ca.pem:ro "
+        f"--add-host ${domjudgeUrl}:${domjudgeIp} "
+        f"-e DOMSERVER_BASEURL=https://${domjudgeUrl}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
+        f"-e CURL_CA_BUNDLE=/domjudge-test-ca.pem -e SSL_CERT_FILE=/domjudge-test-ca.pem "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
 

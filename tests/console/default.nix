@@ -40,7 +40,7 @@ let
   # judgehost.nix must run first: submissions.nix needs a real judgehost
   # registered to actually judge anything.
   subtests = [
-    (import ./judgehost.nix { inherit domjudgeIp; })
+    (import ./judgehost.nix { inherit domjudgeIp domjudgeUrl domjudgeCert; })
     (import ./submissions.nix { inherit pkgs; })
   ];
 
@@ -92,6 +92,9 @@ pkgs.testers.runNixOSTest {
     networking.interfaces.eth1.ipv4.addresses = [
       { address = consoleIp; prefixLength = 24; }
     ];
+    # judgehost.nix's container uses --network=host, so it resolves
+    # domjudgeUrl through whatever this VM itself resolves it to.
+    networking.extraHosts = "${domjudgeIp} ${domjudgeUrl}\n";
   };
 
   nodes.domjudge = import ../domjudge/module.nix {
