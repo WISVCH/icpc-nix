@@ -20,26 +20,17 @@
 
     # Avoid images/console's own desktop/display-manager chain the same way
     # tests/contestant/default.nix avoids its GUI/printer chain: wait for
-    # exactly the unit this subtest needs (systemd-logind, for
-    # `loginctl enable-linger`) rather than multi-user.target.
-    console.wait_for_unit("systemd-logind.service")
+    # exactly the unit this subtest needs (docker.service) rather than
+    # multi-user.target.
+    console.wait_for_unit("docker.service")
 
-    # virtualisation.docker.rootless (images/console/docker.nix) runs a
-    # separate per-user docker daemon as a systemd --user unit, which needs
-    # a lingering login session to start without an interactive login - see
-    # nixpkgs' own nixos/tests/docker-rootless.nix, which this follows.
-    console.succeed("loginctl enable-linger judgehost")
-
-    # isNormalUser accounts get their uid assigned at system activation, not
-    # visible in the static Nix config (nodes.console.config...uid is null
-    # there) - read it back from the running system instead.
-    judgehost_uid = console.succeed("id -u judgehost").strip()
-    sudo = (
-        f"XDG_RUNTIME_DIR=/run/user/{judgehost_uid} "
-        f"DOCKER_HOST=unix:///run/user/{judgehost_uid}/docker.sock "
-        "sudo --preserve-env=XDG_RUNTIME_DIR,DOCKER_HOST -u judgehost"
-    )
-    console.wait_until_succeeds(f"{sudo} systemctl --user is-active docker.service")
+    # base.nix puts "judgehost" in the docker group specifically to reach
+    # this (rootful) daemon's socket - no special env vars needed, unlike
+    # the per-user rootless daemon this used to go through (see
+    # images/console/docker.nix for why rootless can't run judgehost at
+    # all: its create_cgroups script needs real root on the cgroup
+    # hierarchy root, which a rootless daemon can never grant).
+    sudo = "sudo -u judgehost"
 
     print("Loading the judgehost image staged in icpcadmin's home (same tarball shipped to real consoles)")
     # -g omitted: isNormalUser accounts default to primary group "users",
@@ -88,21 +79,15 @@
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
-    # Diverges from that script's flags in two ways, both needed for
-    # rootless Docker (the script was written for rootful docker-ce):
-    #  - --cgroupns=host: upstream DOMjudge's create_cgroups
-    #    (judge/create_cgroups.in) now requires cgroup v2 and checks
-    #    /proc/self/cgroup for a real hierarchy prefix, which a container
-    #    only sees with its cgroup namespace set to the host's.
-    #  - No `-v /sys/fs/cgroup:/sys/fs/cgroup`: that bind-mounts the raw
-    #    host cgroup root, whose cgroup.subtree_control is root-owned and
-    #    not writable by the unprivileged "judgehost" user even with
-    #    --privileged (rootless Docker's daemon itself runs as that user,
-    #    so it can't grant capabilities beyond what the user already has).
-    #    Omitting it lets rootless Docker provide its own cgroup view,
-    #    rooted at systemd's per-user delegated (writable) slice instead.
+    # Adds --cgroupns=host on top of that script's flags: upstream
+    # DOMjudge's create_cgroups (judge/create_cgroups.in) now requires
+    # cgroup v2 and explicitly checks /proc/self/cgroup for a real
+    # hierarchy prefix, which a container only sees with its cgroup
+    # namespace set to the host's rather than a fresh private one. Safe to
+    # combine with --privileged and the host cgroup bind-mount now that
+    # this runs under the real (rootful) docker daemon, not a rootless one.
     console.succeed(
-        f"{sudo} docker run -d --privileged --cgroupns=host "
+        f"{sudo} docker run -d --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup "
         f"-e DOMSERVER_BASEURL=http://${domjudgeIp}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
@@ -115,10 +100,9 @@
         # `docker run -d` only confirms the container *started* - it says
         # nothing about the judgedaemon process inside staying up or
         # actually reaching domserver, so a real failure here (crash,
-        # unreachable network under rootless Docker's default bridge, wrong
-        # credentials, ...) would otherwise show up only as a silent
-        # timeout. Fail fast with a real timeout instead of
-        # wait_until_succeeds' 900s default, and dump the container's own
+        # unreachable network, wrong credentials, ...) would otherwise show
+        # up only as a silent timeout. Fail fast with a real timeout instead
+        # of wait_until_succeeds' 900s default, and dump the container's own
         # logs/status on failure so CI actually explains what happened.
         domjudge.wait_until_succeeds(
             f"curl --fail --silent -u admin:{admin_password} "
