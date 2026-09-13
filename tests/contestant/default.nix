@@ -85,6 +85,8 @@ pkgs.testers.runNixOSTest {
     imports = [
       ../../modules/nixos/contestant
       ../../modules/nixos/common
+      ../../hosts/contestant/users/contestant.nix
+      ../../hosts/contestant/users/icpcadmin.nix
     ];
 
     # Explicit inventory of what the contestant image ships - mirrors
