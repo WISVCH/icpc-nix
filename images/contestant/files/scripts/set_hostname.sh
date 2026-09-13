@@ -39,14 +39,14 @@ fi
 
 # Set system hostname
 #
-# --transient: NixOS manages /etc/hostname declaratively (it's part of the
-# read-only system closure here), so a plain `hostnamectl set-hostname`
-# fails outright ("Failed to write static hostname: Read-only file
-# system") and never even reaches the in-memory hostname. Persisting it
-# isn't needed anyway - this script re-derives the hostname from the USB
-# serial on every boot, so setting just the live/kernel hostname each
-# time has the same practical effect.
-hostnamectl set-hostname --transient $HOSTNAME
+# Plain `hostname`, not `hostnamectl set-hostname`: NixOS manages
+# /etc/hostname declaratively (it's part of the read-only system closure
+# here), so hostnamectl's default (static) write fails outright ("Failed
+# to write static hostname: Read-only file system"). Persisting it isn't
+# needed anyway - this script re-derives the hostname from the USB serial
+# on every boot - so just call sethostname() directly via the classic
+# `hostname` utility, with no systemd-hostnamed/D-Bus involved at all.
+hostname $HOSTNAME
 
 # Publish hostname on DNS server
 IP=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')

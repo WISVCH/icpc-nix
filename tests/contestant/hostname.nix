@@ -69,9 +69,14 @@
     machine.succeed("systemctl restart --no-block firstboot.service")
 
     print("Waiting for set_hostname.sh to apply the fetched hostname")
-    machine.wait_until_succeeds(
-        'test "$(hostname)" = "${testHostname}"', timeout=60
-    )
+    try:
+        machine.wait_until_succeeds(
+            'test "$(hostname)" = "${testHostname}"', timeout=60
+        )
+    except Exception:
+        print(f"current hostname: {machine.succeed('hostname').strip()}")
+        print(machine.succeed("hostnamectl status 2>&1 || true"))
+        raise
 
     print("Checking pdns actually got the A record set_hostname.sh PATCHed in")
     zone = domjudge.succeed(
