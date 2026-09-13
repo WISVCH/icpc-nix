@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
 # Get dev entry mounted as root filesystem
-# 
+#
 # findmnt: show mountpoints
 #     -n:        don't print headers
-#     -o SOURCE: only print /dev mountpoints
-#     head -n 1: print /dev mount for /
-ROOT_MNT=$(findmnt -n -o SOURCE | head -n 1)
+#     -o SOURCE: only print the device column
+#     /:         only match the root mountpoint
+#
+# Without the "/" argument this used to list every mountpoint's source
+# (proc, sysfs, tmpfs, ...) and take the first line, which only happened
+# to be the root device by coincidence of mount ordering - on the
+# contestant VM tests' virtio-blk disk it wasn't, leaving SERIAL empty.
+ROOT_MNT=$(findmnt -n -o SOURCE /)
 
 # Get USB drive serial number
 #
@@ -14,7 +19,13 @@ ROOT_MNT=$(findmnt -n -o SOURCE | head -n 1)
 #     --name:                 dev mountpoint
 #     grep SERIAL_SHORT:      get short serial number
 #     awk -F"=" '{print $2}': get part after '=' sign
-SERIAL=$(/bin/udevadm info --name=$ROOT_MNT | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')
+#
+# Plain `udevadm`, not the hardcoded /bin/udevadm this used to call: this
+# NixOS system has no /bin directory, and firstboot.service (icpc.nix)
+# runs with PATH forced to /run/current-system/sw/bin only - an absolute
+# path bypasses PATH entirely regardless, so that call always failed
+# silently here (its stderr goes to firstboot's own tty, not the journal).
+SERIAL=$(udevadm info --name=$ROOT_MNT | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')
 
 # Fetch desired hostname from API
 HOSTNAME=$(curl -s --retry 5 --retry-all-errors --retry-delay 1 https://@hostnames_api@/hostnames/$SERIAL/ | jq -r .hostname//empty)
@@ -27,7 +38,15 @@ then
 fi
 
 # Set system hostname
-hostnamectl set-hostname $HOSTNAME
+#
+# Plain `hostname`, not `hostnamectl set-hostname`: NixOS manages
+# /etc/hostname declaratively (it's part of the read-only system closure
+# here), so hostnamectl's default (static) write fails outright ("Failed
+# to write static hostname: Read-only file system"). Persisting it isn't
+# needed anyway - this script re-derives the hostname from the USB serial
+# on every boot - so just call sethostname() directly via the classic
+# `hostname` utility, with no systemd-hostnamed/D-Bus involved at all.
+hostname $HOSTNAME
 
 # Publish hostname on DNS server
 IP=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
