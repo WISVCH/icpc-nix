@@ -118,17 +118,15 @@ pkgs.testers.runNixOSTest {
     # chipcie-dns's fixtures instead - test-only, no production code
     # changes needed.
     #
-    # CI showed services.udev.extraRules (which NixOS places in a late
-    # "99-local.rules") never taking effect here: the device's own
-    # ID_SERIAL=root already gets set by an earlier persistent-storage
-    # rule, which likely GOTOs past everything else for a recognized
-    # virtio-blk device - including our own 99-numbered rule. Use
-    # services.udev.packages instead to land in an early "10-"-numbered
-    # file, so ours runs *before* that GOTO. (":=" was tried for good
-    # measure too, to survive being overwritten downstream, but ENV{}
-    # only accepts '==', '!=', '=' or '+=' - confirmed locally via
-    # `udevadm verify`, which is also how this exact rule was checked
-    # before pushing.)
+    # This needed images/common.nix's own udev rule wiring fixed first -
+    # its "persistent-udev-rules" entry used to target an individual file
+    # inside "udev/rules.d" via plain environment.etc, which conflicts with
+    # NixOS's udev module making /etc/udev/rules.d a single whole-directory
+    # symlink to the merged services.udev.packages/extraRules output. That
+    # silently broke *all* custom udev rules repo-wide (confirmed on a
+    # running system: /etc/udev/rules.d held only that one masked file, not
+    # even systemd's own bundled rules) - nothing had used
+    # services.udev.packages/extraRules before this, so it went unnoticed.
     services.udev.packages = [
       (pkgs.writeTextDir "etc/udev/rules.d/10-spoof-test-serial.rules" ''
         KERNEL=="vda", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}="${testSerial}"

@@ -24,40 +24,12 @@
     print("Checking the test-only udev rule actually spoofed the root disk's serial")
     root_mnt = machine.succeed("findmnt -n -o SOURCE /").strip()
     # The root block device's udev database entry is populated once, very
-    # early in boot (before/around switch-root) - CI showed it can still be
-    # carrying whatever an earlier pass set (ID_SERIAL=root, no
-    # ID_SERIAL_SHORT at all) with no guarantee our rule has been
-    # (re-)evaluated against it yet by the time this subtest runs. Force a
-    # fresh "add" event for it explicitly rather than relying on that.
+    # early in boot (before/around switch-root) - force a fresh "add" event
+    # for it explicitly rather than relying on whatever coldplug pass ran
+    # during boot having already picked up the rule.
     machine.succeed(f"udevadm trigger --action=add --name-match={root_mnt}")
     machine.succeed("udevadm settle")
     udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
-
-    # Three prior CI attempts (99-numbered extraRules, early 10-numbered
-    # services.udev.packages, then confirming via --extra-rules-dir) all
-    # failed to make ID_SERIAL_SHORT show up here. The last one found why:
-    # /etc/udev/rules.d holds only one unrelated symlink
-    # (75-persistent-net-generator.rules) - not even systemd's own bundled
-    # rules are there, so systemd-udevd isn't reading its ruleset from
-    # /etc/udev/rules.d on this system at all. Ask systemd-udevd itself,
-    # and the store, rather than guessing a fourth candidate path.
-    udevd_exec = machine.succeed(
-        "systemctl show systemd-udevd -p ExecStart --no-pager 2>&1 || true"
-    )
-    print(f"systemd-udevd ExecStart:\n{udevd_exec}")
-    store_udev_rules = machine.succeed(
-        "find /nix/store -maxdepth 1 -iname '*udev-rules*' 2>&1 || true"
-    ).strip()
-    print(f"udev-rules derivations in the store:\n{store_udev_rules}")
-    for rules_dir in store_udev_rules.splitlines():
-        listing = machine.succeed(
-            f"find {rules_dir} -iname '*spoof-test-serial*' 2>&1 || true"
-        )
-        print(f"spoof-rule search under {rules_dir}:\n{listing}")
-    current_system_rules = machine.succeed(
-        "readlink -f /run/current-system/sw/lib/udev/rules.d 2>&1 || true"
-    )
-    print(f"/run/current-system/sw/lib/udev/rules.d resolves to:\n{current_system_rules}")
 
     assert "ID_SERIAL_SHORT=" in udev_info, (
         f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
