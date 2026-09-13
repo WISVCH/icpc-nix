@@ -24,6 +24,15 @@
     # multi-user.target.
     console.wait_for_unit("docker.service")
 
+    # network-addresses-eth1.service (which actually assigns eth1 its
+    # static IP - see default.nix) is enabled but only gets pulled in via
+    # multi-user.target/network-setup.target, which this test deliberately
+    # never waits for (see the comment above) - so eth1 stays down and
+    # console has no route to "domjudge" at all until this is started
+    # directly. Same fix tests/contestant/domjudge.nix already applies to
+    # "machine" for the identical reason.
+    console.succeed("systemctl start network-addresses-eth1.service")
+
     # base.nix puts "judgehost" in the docker group specifically to reach
     # this (rootful) daemon's socket - no special env vars needed, unlike
     # the per-user rootless daemon this used to go through (see
@@ -83,6 +92,15 @@
     password = domjudge.succeed(
         f"podman exec domserver sh -c \"grep -v '^#' {secret} | cut -f4\""
     ).strip()
+
+    # Bisect docker-specific vs. general console<->domjudge connectivity
+    # before involving docker at all: a plain curl from this VM's own root
+    # shell over the exact same virtual LAN judgehost's container will use.
+    print("Sanity check: can console reach domjudge over HTTPS at all?")
+    print(console.succeed(
+        f"curl -v --max-time 10 --cacert ${domjudgeCert.cert} "
+        f"https://${domjudgeUrl}/api/v4/version 2>&1 || true"
+    ))
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
     # Diverges from that script in a few ways:
