@@ -1,0 +1,6 @@
+id: icpcnixtest
+name: icpc-nix judgehost test
+short-name: icpcnixtest
+start-time: 2020-01-01T00:00:00.000Z
+duration: 87600:00:00
+penalty_time: 20

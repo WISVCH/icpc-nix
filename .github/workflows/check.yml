@@ -44,3 +44,6 @@ jobs:
 
       - name: Run contestant VM tests
         run: nix build .#contestant-vm-tests -L
+
+      - name: Run console VM tests
+        run: nix build .#console-vm-tests -L

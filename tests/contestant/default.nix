@@ -26,15 +26,15 @@ let
   testVars = vars // { domjudge_url = domjudgeUrl; judge_ip = domjudgeIp; };
   inherit (vars) hostnames_api dns_api dns_zone;
 
-  domjudgeCert = import ./domjudge/cert.nix {
+  domjudgeCert = import ../domjudge/cert.nix {
     inherit pkgs;
     commonName = domjudgeUrl;
   };
-  hostnamesCert = import ./domjudge/cert.nix {
+  hostnamesCert = import ../domjudge/cert.nix {
     inherit pkgs;
     commonName = hostnames_api;
   };
-  dnsCert = import ./domjudge/cert.nix {
+  dnsCert = import ../domjudge/cert.nix {
     inherit pkgs;
     commonName = dns_api;
   };
@@ -147,7 +147,7 @@ pkgs.testers.runNixOSTest {
     };
   };
 
-  nodes.domjudge = import ./domjudge/module.nix {
+  nodes.domjudge = import ../domjudge/module.nix {
     inherit domjudgeIp domjudgeUrl;
     cert = domjudgeCert;
     hostnamesApiUrl = hostnames_api;

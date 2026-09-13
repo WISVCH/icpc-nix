@@ -1,14 +1,21 @@
-# NixOS module for the ephemeral "domjudge" node used by
-# tests/contestant/domjudge.nix: a real DOMjudge (domserver + mariadb, via
-# the same WISVCH packaging images used elsewhere in this repo - see
-# images/console/home/icpcadmin.nix's judgehost pull) running as containers,
-# fronted by a native nginx that terminates TLS with a test-only cert (see
-# cert.nix) so self_test's unmodified `https://` autologin check can trust it.
+# NixOS module for the ephemeral "domjudge" node shared by tests/contestant
+# (see contestant/domjudge.nix) and tests/console: a real DOMjudge
+# (domserver + mariadb, via the same WISVCH packaging images used elsewhere
+# in this repo - see images/console/home/icpcadmin.nix's judgehost pull)
+# running as containers, fronted by a native nginx that terminates TLS with
+# a test-only cert (see cert.nix) so self_test's unmodified `https://`
+# autologin check can trust it.
 #
 # Also hosts hostnames_api and pdns (see tests/contestant/hostname.nix) -
 # production co-locates all three behind the same judge_ip (see
 # images/contestant/firewall.nix and vars.nix), so this ephemeral node
 # mirrors that instead of standing up separate test nodes for them.
+#
+# Port 80 is also opened directly (bypassing nginx/TLS) so tests/console's
+# judgehost container - which has no reason to deal with the test-only cert
+# - can register with domserver over plain HTTP, same as containers on this
+# node already talk to each other over. This is only ever an ephemeral,
+# throwaway test instance, never the real production domserver.
 { domjudgeIp, domjudgeUrl, cert, hostnamesApiUrl, hostnamesCert, dnsApiUrl, dnsCert }:
 { pkgs, lib, ... }:
 let
@@ -77,7 +84,7 @@ in
   networking.interfaces.eth1.ipv4.addresses = [
     { address = domjudgeIp; prefixLength = 24; }
   ];
-  networking.firewall.allowedTCPPorts = [ 443 ];
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   # nixosTest's ~1GB default is nowhere near enough to run mariadb and a
   # PHP-FPM/nginx DOMjudge stack at the same time - CI observed mariadb's own
@@ -105,6 +112,14 @@ in
       MYSQL_PASSWORD = mysqlPassword;
       MYSQL_DATABASE = mysqlDatabase;
     };
+    # mariadb's own default max_allowed_packet is too small for one of the
+    # example problems (boolfind/fltcmp) domserver's own first-boot install
+    # seeds into its "demo" contest, which otherwise disconnects mid-import
+    # ("Got a packet bigger than 'max_allowed_packet' bytes") and crashes
+    # domserver's startup, sending it into a restart loop - CI observed this
+    # on every boot. This flag was already documented as matched (see the
+    # comment above) but had never actually been passed through.
+    cmd = [ "--max-connections=1000" "--max-allowed-packet=512M" "--innodb_snapshot_isolation=OFF" ];
     extraOptions = [ "--network=host" ];
   };
 
