@@ -1,14 +1,21 @@
-# NixOS module for the ephemeral "domjudge" node used by
-# tests/contestant/domjudge.nix: a real DOMjudge (domserver + mariadb, via
-# the same WISVCH packaging images used elsewhere in this repo - see
-# modules/home-manager/icpcadmin/judgehost-image.nix's judgehost pull) running as containers,
-# fronted by a native nginx that terminates TLS with a test-only cert (see
-# cert.nix) so self_test's unmodified `https://` autologin check can trust it.
+# NixOS module for the ephemeral "domjudge" node shared by tests/contestant
+# (see contestant/domjudge.nix) and tests/console: a real DOMjudge
+# (domserver + mariadb, via the same WISVCH packaging images used elsewhere
+# in this repo - see modules/home-manager/icpcadmin/judgehost-image.nix's
+# judgehost pull) running as containers, fronted by a native nginx that
+# terminates TLS with a test-only cert (see cert.nix) so self_test's
+# unmodified `https://` autologin check can trust it.
 #
 # Also hosts hostnames_api and pdns (see tests/contestant/hostname.nix) -
 # production co-locates all three behind the same judge_ip (see
 # modules/nixos/contestant/firewall.nix and vars.nix), so this ephemeral node
 # mirrors that instead of standing up separate test nodes for them.
+#
+# Port 80 is also opened directly (bypassing nginx/TLS) so tests/console's
+# judgehost container - which has no reason to deal with the test-only cert
+# - can register with domserver over plain HTTP, same as containers on this
+# node already talk to each other over. This is only ever an ephemeral,
+# throwaway test instance, never the real production domserver.
 { domjudgeIp, domjudgeUrl, cert, hostnamesApiUrl, hostnamesCert, dnsApiUrl, dnsCert }:
 { pkgs, lib, ... }:
 let
@@ -74,10 +81,25 @@ let
   mysqlDatabase = "domjudge";
 in
 {
+  # nixosTest's default eth1 auto-addressing (virtualisation.vlans = [1])
+  # assigns IPs by alphabetical node-name order, not by the domjudgeIp/
+  # consoleIp/machineIp values callers pass in here - when a test's node
+  # names sort the other way round from those values (tests/console:
+  # "console" < "domjudge" alphabetically, but domjudgeIp is .1 and
+  # consoleIp is .2), NixOS's list-option merging makes each node end up
+  # owning *both* addresses on eth1 instead of just its own. A node that
+  # locally owns the address it's trying to reach gets routed to itself
+  # (kernel's local table wins), not across the virtual LAN to the real
+  # peer - confirmed in CI as "Connection refused" instead of a real
+  # judgehost<->domserver handshake. Declaring eth1 explicitly (assignIP
+  # defaults false) opts out of that auto-addressing so only the address
+  # below applies, regardless of node naming.
+  virtualisation.interfaces.eth1.vlan = 1;
+
   networking.interfaces.eth1.ipv4.addresses = [
     { address = domjudgeIp; prefixLength = 24; }
   ];
-  networking.firewall.allowedTCPPorts = [ 443 ];
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   # nixosTest's ~1GB default is nowhere near enough to run mariadb and a
   # PHP-FPM/nginx DOMjudge stack at the same time - CI observed mariadb's own
@@ -105,6 +127,14 @@ in
       MYSQL_PASSWORD = mysqlPassword;
       MYSQL_DATABASE = mysqlDatabase;
     };
+    # mariadb's own default max_allowed_packet is too small for one of the
+    # example problems (boolfind/fltcmp) domserver's own first-boot install
+    # seeds into its "demo" contest, which otherwise disconnects mid-import
+    # ("Got a packet bigger than 'max_allowed_packet' bytes") and crashes
+    # domserver's startup, sending it into a restart loop - CI observed this
+    # on every boot. This flag was already documented as matched (see the
+    # comment above) but had never actually been passed through.
+    cmd = [ "--max-connections=1000" "--max-allowed-packet=512M" "--innodb_snapshot_isolation=OFF" ];
     extraOptions = [ "--network=host" ];
   };
 

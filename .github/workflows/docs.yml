@@ -1,0 +1,66 @@
+name: Documentation
+
+# Builds and deploys the zensical docs site (docs/public/) to GitHub Pages.
+# Deploy only runs on push to main; PRs get a build-only check so a broken
+# docs build fails the PR without publishing anything.
+#
+# Runs on the standard GitHub-hosted runner, not the self-hosted
+# "nix-builder" used elsewhere in this repo - a docs build doesn't need it,
+# and check.yml already skips that runner for docs-only PRs.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/public/**"
+      - "zensical.toml"
+  pull_request:
+    paths:
+      - "docs/public/**"
+      - "zensical.toml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Install zensical
+        # Pinned: zensical is pre-1.0, bump deliberately.
+        run: pip install zensical==0.0.59
+
+      - name: Build
+        run: zensical build --clean
+
+      - name: Upload pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure pages
+        uses: actions/configure-pages@v6
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
