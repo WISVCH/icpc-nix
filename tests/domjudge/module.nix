@@ -65,6 +65,14 @@ in
       MYSQL_PASSWORD = mysqlPassword;
       MYSQL_DATABASE = mysqlDatabase;
     };
+    # mariadb's own default max_allowed_packet is too small for one of the
+    # example problems (boolfind/fltcmp) domserver's own first-boot install
+    # seeds into its "demo" contest, which otherwise disconnects mid-import
+    # ("Got a packet bigger than 'max_allowed_packet' bytes") and crashes
+    # domserver's startup, sending it into a restart loop - CI observed this
+    # on every boot. This flag was already documented as matched (see the
+    # comment above) but had never actually been passed through.
+    cmd = [ "--max-connections=1000" "--max-allowed-packet=512M" "--innodb_snapshot_isolation=OFF" ];
     extraOptions = [ "--network=host" ];
   };
 
