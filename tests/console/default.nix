@@ -15,12 +15,26 @@ let
   lib = pkgs.lib;
 
   domjudgeUrl = "domjudge.icpc-nix.test";
+  # The shared domjudge module (../domjudge/module.nix) also always hosts
+  # hostnames_api/pdns for tests/contestant/hostname.nix - this suite
+  # doesn't test either, but still needs to supply real cert/URL values
+  # since the module isn't parameterized to skip them.
+  hostnamesApiUrl = "hostnames.icpc-nix.test";
+  dnsApiUrl = "dns.icpc-nix.test";
   domjudgeIp = "192.168.1.1";
   consoleIp = "192.168.1.2";
 
   domjudgeCert = import ../domjudge/cert.nix {
     inherit pkgs;
     commonName = domjudgeUrl;
+  };
+  hostnamesCert = import ../domjudge/cert.nix {
+    inherit pkgs;
+    commonName = hostnamesApiUrl;
+  };
+  dnsCert = import ../domjudge/cert.nix {
+    inherit pkgs;
+    commonName = dnsApiUrl;
   };
 
   # judgehost.nix must run first: submissions.nix needs a real judgehost
@@ -81,8 +95,9 @@ pkgs.testers.runNixOSTest {
   };
 
   nodes.domjudge = import ../domjudge/module.nix {
-    inherit domjudgeIp domjudgeUrl;
+    inherit domjudgeIp domjudgeUrl hostnamesApiUrl dnsApiUrl;
     cert = domjudgeCert;
+    inherit hostnamesCert dnsCert;
   };
 
   testScript = lib.concatMapStrings subtestScript subtests;

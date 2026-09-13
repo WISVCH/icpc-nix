@@ -21,7 +21,7 @@ cat << EOF
 
 EOF
 
-# su - -c /icpc/scripts/set_hostname.sh
+su - -c /icpc/scripts/set_hostname.sh
 {
 /run/current-system/sw/bin/su - -c /etc/icpc/scripts/self_test
 } || {
