@@ -98,9 +98,24 @@
     admin_password = domjudge.succeed(
         "podman exec domserver cat /opt/domjudge/domserver/etc/initial_admin_password.secret"
     ).strip()
-    domjudge.wait_until_succeeds(
-        f"curl --fail --silent -u admin:{admin_password} "
-        "http://127.0.0.1/api/v4/judgehosts | grep -q judgedaemon-0"
-    )
+    try:
+        # `docker run -d` only confirms the container *started* - it says
+        # nothing about the judgedaemon process inside staying up or
+        # actually reaching domserver, so a real failure here (crash,
+        # unreachable network under rootless Docker's default bridge, wrong
+        # credentials, ...) would otherwise show up only as a silent
+        # timeout. Fail fast with a real timeout instead of
+        # wait_until_succeeds' 900s default, and dump the container's own
+        # logs/status on failure so CI actually explains what happened.
+        domjudge.wait_until_succeeds(
+            f"curl --fail --silent -u admin:{admin_password} "
+            "http://127.0.0.1/api/v4/judgehosts | grep -q judgedaemon-0",
+            timeout=90,
+        )
+    except Exception:
+        print("judgehost never registered - dumping its container logs/status for diagnosis")
+        print(console.succeed(f"{sudo} docker ps -a"))
+        print(console.succeed(f"{sudo} docker logs judgehost-0"))
+        raise
   '';
 }
