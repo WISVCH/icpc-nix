@@ -81,6 +81,21 @@ let
   mysqlDatabase = "domjudge";
 in
 {
+  # nixosTest's default eth1 auto-addressing (virtualisation.vlans = [1])
+  # assigns IPs by alphabetical node-name order, not by the domjudgeIp/
+  # consoleIp/machineIp values callers pass in here - when a test's node
+  # names sort the other way round from those values (tests/console:
+  # "console" < "domjudge" alphabetically, but domjudgeIp is .1 and
+  # consoleIp is .2), NixOS's list-option merging makes each node end up
+  # owning *both* addresses on eth1 instead of just its own. A node that
+  # locally owns the address it's trying to reach gets routed to itself
+  # (kernel's local table wins), not across the virtual LAN to the real
+  # peer - confirmed in CI as "Connection refused" instead of a real
+  # judgehost<->domserver handshake. Declaring eth1 explicitly (assignIP
+  # defaults false) opts out of that auto-addressing so only the address
+  # below applies, regardless of node naming.
+  virtualisation.interfaces.eth1.vlan = 1;
+
   networking.interfaces.eth1.ipv4.addresses = [
     { address = domjudgeIp; prefixLength = 24; }
   ];

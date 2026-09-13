@@ -89,6 +89,13 @@ pkgs.testers.runNixOSTest {
     # tests/contestant/default.nix's identical comment for how this was
     # confirmed in CI for that image.
     networking.interfaces.eth1.useDHCP = lib.mkForce false;
+    # See ../domjudge/module.nix's identical declaration for why this is
+    # needed: "console" sorts before "domjudge" alphabetically, so
+    # nixosTest's default eth1 auto-addressing would assign *this* node
+    # 192.168.1.1 - domjudgeIp, not consoleIp - on top of the address
+    # below, leaving console owning domjudgeIp locally and routing its own
+    # judgehost-connect traffic to itself instead of across to "domjudge".
+    virtualisation.interfaces.eth1.vlan = 1;
     networking.interfaces.eth1.ipv4.addresses = [
       { address = consoleIp; prefixLength = 24; }
     ];
