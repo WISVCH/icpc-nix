@@ -115,24 +115,39 @@
     #    reach across that LAN. Host networking sidesteps that, matching
     #    how module.nix already avoids the same complexity for
     #    domserver/mariadb.
-    #  - https:// + --add-host + a mounted CA cert, not plain http://
-    #    <domjudgeIp>/: domserver's own bundled webserver only binds
-    #    127.0.0.1 inside its container (confirmed in CI - judgehost got
-    #    "Couldn't connect to server" on port 80 even with host networking
-    #    reaching the domjudge VM just fine) - module.nix's native nginx on
-    #    443 is the only thing actually reachable from elsewhere on the
-    #    network, same path self_test's own autologin check already uses.
-    #    curl (which judgedaemon shells out to, per its log messages)
-    #    respects CURL_CA_BUNDLE/SSL_CERT_FILE for a custom trusted CA.
+    #  - https:// + --add-host, not plain http://<domjudgeIp>/: domserver's
+    #    own bundled webserver only binds 127.0.0.1 inside its container
+    #    (confirmed in CI - judgehost got "Couldn't connect to server" on
+    #    port 80 even with host networking reaching the domjudge VM just
+    #    fine) - module.nix's native nginx on 443 is the only thing
+    #    actually reachable from elsewhere on the network, same path
+    #    self_test's own autologin check already uses.
     console.succeed(
         f"{sudo} docker run -d --privileged --cgroupns=host --network=host "
         "-v /sys/fs/cgroup:/sys/fs/cgroup "
-        "-v ${domjudgeCert.cert}:/domjudge-test-ca.pem:ro "
         "--add-host ${domjudgeUrl}:${domjudgeIp} "
         f"-e DOMSERVER_BASEURL=https://${domjudgeUrl}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
-        "-e CURL_CA_BUNDLE=/domjudge-test-ca.pem -e SSL_CERT_FILE=/domjudge-test-ca.pem "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
+
+    # judgedaemon talks to the REST API via PHP's curl_exec() (judge/
+    # judgedaemon.main.php's setupCurlHandle()), not the standalone `curl`
+    # binary - despite its "Error while executing curl ..." log messages,
+    # which are just this function's own wording. PHP-curl doesn't read
+    # CURL_CA_BUNDLE/SSL_CERT_FILE from the environment (those are the
+    # `curl` CLI's own startup flags, not libcurl API behavior) - confirmed
+    # in CI as "SSL certificate problem: self-signed certificate" even with
+    # both set. Installing the cert into the container's actual system
+    # trust store is what PHP-curl's OpenSSL backend actually consults.
+    #
+    # Registration retries every 30s (judgedaemon.main.php's
+    # registerJudgehost()), so this has plenty of time to land before the
+    # next attempt even though the container already started.
+    console.succeed(
+        f"{sudo} docker cp ${domjudgeCert.cert} "
+        "judgehost-0:/usr/local/share/ca-certificates/domjudge-test.crt"
+    )
+    console.succeed(f"{sudo} docker exec judgehost-0 update-ca-certificates")
 
     print("Waiting for domserver to see the judgehost register")
     admin_password = domjudge.succeed(
