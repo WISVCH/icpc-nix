@@ -185,6 +185,11 @@
         inherit pkgs self inputs system vars;
       };
 
+      ## nix build .#console-vm-tests
+      packages.x86_64-linux.console-vm-tests = import ./tests/console {
+        inherit pkgs self inputs system vars;
+      };
+
       ## nix run .#build-signed-console / .#build-signed-contestant
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";
       apps.x86_64-linux.build-signed-contestant = mkBuildSignedApp "contestant";
