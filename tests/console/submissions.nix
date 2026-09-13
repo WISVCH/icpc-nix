@@ -54,7 +54,9 @@ let
         # domserver's own logs. Surface it here so a real compile failure
         # is diagnosable from CI output instead of just a bare verdict.
         print(domjudge.succeed(
-            "podman exec mariadb mysql -u domjudge -pdjpw domjudge -N -e "
+            # This mariadb:11 image dropped the "mysql" client compat
+            # symlink - only "mariadb" exists now.
+            "podman exec mariadb mariadb -u domjudge -pdjpw domjudge -N -e "
             f"\"SELECT output_compile FROM judging WHERE submitid={submission['id']} "
             "ORDER BY judgingid DESC LIMIT 1\""
         ))
