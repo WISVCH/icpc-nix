@@ -53,6 +53,7 @@ let
     (import ./domjudge.nix { inherit domjudgeUrl; })
     (import ./hostname.nix { inherit dns_zone testHostname; })
     (import ./firewall.nix { inherit pkgs self inputs system vars; })
+    (import ./usbguard.nix { inherit pkgs self inputs system vars; })
   ];
 
   indent = script:
