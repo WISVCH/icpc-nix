@@ -25,6 +25,17 @@ qemu-system-x86_64 -drive if=pflash,format=raw,unit=0,readonly=on,file="$OVMF_CO
 
 The image can also be tested in Proxmox: import `result/nixos.img` as a VM disk (`qm importdisk`, or attach it directly), set the VM's BIOS to **OVMF**, and boot — no ISO/CD-ROM step needed since it's a bootable disk image, not installation media.
 
+## Building the docs
+
+Docs live under `docs/public/` and are built with [zensical](https://zensical.org/). Preview them locally:
+
+```bash
+pip install zensical
+zensical serve
+```
+
+Pushes to `main` that touch `docs/public/` or `zensical.toml` are deployed automatically to GitHub Pages by `.github/workflows/docs.yml`.
+
 ## Releasing and deploying
 
 Releases are built by manually running the **Release image** workflow (Actions tab > "Release image" > Run workflow), which lets you pick the image, a version, whether it's a prerelease, and whether to deploy the result to that image's Proxmox staging VM afterwards. See `.github/workflows/build-image.yml` for the required repository variables/secrets.
