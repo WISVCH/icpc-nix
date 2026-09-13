@@ -51,6 +51,12 @@
     print("Waiting for DOMjudge's database install/migration to finish...")
     domjudge.wait_for_unit("podman-mariadb.service")
     domjudge.wait_for_unit("podman-domserver.service")
+    # nginx.service (the native reverse proxy judgehost's own HTTPS
+    # registration goes through - see below) is a separate systemd unit
+    # from the podman containers above, with no ordering dependency on
+    # them - tests/contestant/domjudge.nix already waits for it
+    # explicitly for the same reason.
+    domjudge.wait_for_unit("nginx.service")
     domjudge.wait_until_succeeds(
         "curl --fail --silent http://127.0.0.1/api/v4/version", timeout=600
     )
