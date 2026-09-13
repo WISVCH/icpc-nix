@@ -19,7 +19,13 @@ ROOT_MNT=$(findmnt -n -o SOURCE /)
 #     --name:                 dev mountpoint
 #     grep SERIAL_SHORT:      get short serial number
 #     awk -F"=" '{print $2}': get part after '=' sign
-SERIAL=$(/bin/udevadm info --name=$ROOT_MNT | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')
+#
+# Plain `udevadm`, not the hardcoded /bin/udevadm this used to call: this
+# NixOS system has no /bin directory, and firstboot.service (icpc.nix)
+# runs with PATH forced to /run/current-system/sw/bin only - an absolute
+# path bypasses PATH entirely regardless, so that call always failed
+# silently here (its stderr goes to firstboot's own tty, not the journal).
+SERIAL=$(udevadm info --name=$ROOT_MNT | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')
 
 # Fetch desired hostname from API
 HOSTNAME=$(curl -s --retry 5 --retry-all-errors --retry-delay 1 https://@hostnames_api@/hostnames/$SERIAL/ | jq -r .hostname//empty)
