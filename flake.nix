@@ -86,12 +86,7 @@
               ;
           };
           modules = [
-            ./images/console
-            ./images/common.nix
-            ./hosts/console/hardware-configuration.nix
-            {
-              system.stateVersion = "23.11";
-            }
+            ./hosts/console/configuration.nix
           ];
         };
 
@@ -107,12 +102,7 @@
               ;
           };
           modules = [
-            ./images/contestant
-            ./images/common.nix
-            ./hosts/contestant/hardware-configuration.nix
-            {
-              system.stateVersion = "23.11";
-            }
+            ./hosts/contestant/configuration.nix
           ];
         };
       };
@@ -131,8 +121,11 @@
               ;
           };
           modules = [
-            ./images/common.nix
-            ./images/console
+            ./modules/nixos/common
+            ./modules/nixos/console
+            ./hosts/console/users/icpcadmin.nix
+            ./hosts/console/users/icpctools.nix
+            ./hosts/console/users/judgehost.nix
             {
               system.stateVersion = "23.11";
               # image.baseName only exists within the per-format extended
@@ -161,8 +154,10 @@
               ;
           };
           modules = [
-            ./images/common.nix
-            ./images/contestant
+            ./modules/nixos/common
+            ./modules/nixos/contestant
+            ./hosts/contestant/users/contestant.nix
+            ./hosts/contestant/users/icpcadmin.nix
             {
               system.stateVersion = "23.11";
               # image.baseName only exists within the per-format extended
@@ -173,6 +168,25 @@
               image.modules.raw-efi = {
                 image.baseName = "nixos";
               };
+
+              # Explicit inventory of what this image ships - mirrors
+              # hosts/contestant/configuration.nix (kept separate since this
+              # build path deliberately excludes hardware-configuration.nix).
+              modules.contestant.languages.enable = true;
+              modules.contestant.languages.c.enable = true;
+              modules.contestant.languages.cpp.enable = true;
+              modules.contestant.languages.python.enable = true;
+              modules.contestant.languages.java.enable = true;
+              modules.contestant.languages.kotlin.enable = true;
+
+              modules.contestant.ides.enable = true;
+              modules.contestant.ides.vscode.enable = true;
+              modules.contestant.ides.neovim.enable = true;
+              modules.contestant.ides.eclipse.enable = false;
+              modules.contestant.ides.jetbrains.enable = false;
+              modules.contestant.ides.idea.enable = false;
+              modules.contestant.ides.pycharm.enable = false;
+              modules.contestant.ides.clion.enable = false;
             }
           ];
         }).config.system.build.images.raw-efi;

@@ -1,14 +1,14 @@
 # Subtest fragment for tests/console/default.nix, covering issue #54's
 # "ensure console judgehost can connect with judgehost" checklist item: the
 # console image's own pre-staged judgehost image (the same tarball
-# images/console/home/icpcadmin.nix stages for real contests) is loaded and
-# started, and domserver sees it register.
+# modules/home-manager/icpcadmin/judgehost-image.nix stages for real
+# contests) is loaded and started, and domserver sees it register.
 #
 # Real contests start judgehost via chipcie-startup-scripts/start-judgehost.sh
 # (invoked by icpc-playbooks' start_judgehosts.yml), neither of which is
 # vendored in this repo. This reimplements just enough of that script's
 # `docker run` invocation to exercise the same judgehost<->domserver
-# handshake - kept test-only rather than promoted into images/console (see
+# handshake - kept test-only rather than promoted into modules/nixos/console (see
 # the design discussion on issue #54: that would newly make icpc-nix, not
 # icpc-playbooks, responsible for judgehost startup, a bigger change than
 # this test needs).
@@ -18,7 +18,7 @@
   script = ''
     import re
 
-    # Avoid images/console's own desktop/display-manager chain the same way
+    # Avoid modules/nixos/console's own desktop/display-manager chain the same way
     # tests/contestant/default.nix avoids its GUI/printer chain: wait for
     # exactly the unit this subtest needs (docker.service) rather than
     # multi-user.target.
@@ -36,7 +36,7 @@
     # base.nix puts "judgehost" in the docker group specifically to reach
     # this (rootful) daemon's socket - no special env vars needed, unlike
     # the per-user rootless daemon this used to go through (see
-    # images/console/docker.nix for why rootless can't run judgehost at
+    # modules/nixos/console/docker.nix for why rootless can't run judgehost at
     # all: its create_cgroups script needs real root on the cgroup
     # hierarchy root, which a rootless daemon can never grant).
     sudo = "sudo -u judgehost"

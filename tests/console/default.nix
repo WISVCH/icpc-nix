@@ -63,14 +63,17 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 25 * 60;
 
   node.specialArgs = { inherit self inputs system vars; };
-  # images/common.nix sets nixpkgs.config.allowUnfree, which runNixOSTest's
+  # modules/nixos/common sets nixpkgs.config.allowUnfree, which runNixOSTest's
   # default node.pkgs would otherwise make read-only.
   node.pkgsReadOnly = false;
 
   nodes.console = {
     imports = [
-      ../../images/console
-      ../../images/common.nix
+      ../../modules/nixos/console
+      ../../modules/nixos/common
+      ../../hosts/console/users/icpcadmin.nix
+      ../../hosts/console/users/icpctools.nix
+      ../../hosts/console/users/judgehost.nix
     ];
 
     # nixosTest's ~1GB default is nowhere near enough for a full XFCE
@@ -83,7 +86,7 @@ pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 4096;
     virtualisation.cores = 2;
 
-    # images/console/base.nix forces networking.useDHCP = true globally;
+    # base.nix forces networking.useDHCP = true globally;
     # left at its default (null -> inherits that global true) for eth1, the
     # static address below would otherwise silently never get applied - see
     # tests/contestant/default.nix's identical comment for how this was

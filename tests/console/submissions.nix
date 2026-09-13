@@ -9,7 +9,7 @@
 # these external IDs). "pypy3" is not a separate submittable DOMjudge
 # language - this WISVCH build actually runs python3 submissions through
 # pypy3 (see its version-check command in LanguageFixture.php), so
-# python3 alone covers both of images/contestant/compilers.nix's
+# python3 alone covers both of modules/nixos/contestant/languages/python's
 # python3/pypy3 packages. Kotlin is the only one of these languages
 # requiring an explicit `entry_point` (see LanguageFixture.php's
 # requireEntryPoint column).
