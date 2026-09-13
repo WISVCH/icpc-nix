@@ -46,6 +46,18 @@ let
         "http://127.0.0.1/api/v4/contests/${cid}/submissions"
     ))
     verdict = wait_for_verdict("${cid}", submission["id"])
+    if verdict != "AC":
+        # judgedaemon's own log only ever shows a one-line summary
+        # ("Compilation: (...) 'compiler-error'") - the actual compiler
+        # stderr/stdout lives in the domserver DB (Judging::output_compile,
+        # webapp/src/Entity/Judging.php), not anywhere in judgehost's or
+        # domserver's own logs. Surface it here so a real compile failure
+        # is diagnosable from CI output instead of just a bare verdict.
+        print(domjudge.succeed(
+            "podman exec mariadb mysql -u domjudge -pdjpw domjudge -N -e "
+            f"\"SELECT output_compile FROM judging WHERE submitid={submission['id']} "
+            "ORDER BY judgingid DESC LIMIT 1\""
+        ))
     assert verdict == "AC", f"${lang.id} solution should be judged correct, got {verdict!r}"
   '';
 in
