@@ -12,7 +12,7 @@ Per team discussion, venue computers are currently set up such that it's "not ea
 
 ## The new design
 
-`images/contestant/usbguard.nix` enables `services.usbguard` with a default-deny allowlist, rather than a denylist of "network" device classes:
+`modules/nixos/contestant/usbguard.nix` enables `services.usbguard` with a default-deny allowlist, rather than a denylist of "network" device classes:
 
 - Only interface class `03` (HID - keyboard/mouse) and `09` (Hub) are explicitly allowed.
 - `services.usbguard.implicitPolicyTarget` is left at its NixOS-module default of `"block"`: anything not explicitly allowed - USB mass storage, USB-Ethernet/CDC adapters, and everything else - is blocked with no separate rule needed.
@@ -29,5 +29,5 @@ Per team discussion, venue computers are currently set up such that it's "not ea
 ## Consequences
 
 - Physical security at boot time (i.e., what's plugged in before the machine starts) is still not enforced by this config - only devices plugged in after boot are policed. If a venue's physical chassis/port access needs to be audited or tightened further, that remains the informal, venue-specific property this ADR's Context section describes; this change narrows but does not close that gap.
-- Legitimate post-boot USB access for troubleshooting (e.g., an organizer plugging in a USB drive) isn't wired into `services.usbguard.IPCAllowedUsers`/`IPCAllowedGroups` beyond the module's own default (`root`), but `icpcadmin` already has passwordless sudo (`images/contestant/base.nix`), so `sudo usbguard allow-device ...` works without further config.
+- Legitimate post-boot USB access for troubleshooting (e.g., an organizer plugging in a USB drive) isn't wired into `services.usbguard.IPCAllowedUsers`/`IPCAllowedGroups` beyond the module's own default (`root`), but `icpcadmin` already has passwordless sudo (`modules/nixos/contestant/base.nix`), so `sudo usbguard allow-device ...` works without further config.
 - `tests/contestant/usbguard.nix` adds a VM regression test (wired into `tests/contestant/default.nix`) asserting the allow/block outcome for a HID, a mass-storage, and a USB-Ethernet device plugged in after boot - the same class of check `tests/contestant/firewall.nix` does for the egress allowlist.
