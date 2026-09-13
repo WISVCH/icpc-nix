@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
 # Get dev entry mounted as root filesystem
-# 
+#
 # findmnt: show mountpoints
 #     -n:        don't print headers
-#     -o SOURCE: only print /dev mountpoints
-#     head -n 1: print /dev mount for /
-ROOT_MNT=$(findmnt -n -o SOURCE | head -n 1)
+#     -o SOURCE: only print the device column
+#     /:         only match the root mountpoint
+#
+# Without the "/" argument this used to list every mountpoint's source
+# (proc, sysfs, tmpfs, ...) and take the first line, which only happened
+# to be the root device by coincidence of mount ordering - on the
+# contestant VM tests' virtio-blk disk it wasn't, leaving SERIAL empty.
+ROOT_MNT=$(findmnt -n -o SOURCE /)
 
 # Get USB drive serial number
 #
