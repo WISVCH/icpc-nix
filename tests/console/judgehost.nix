@@ -79,15 +79,22 @@
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
-    # Adds --cgroupns=host on top of that script's flags: upstream
-    # DOMjudge's create_cgroups (judge/create_cgroups.in) now requires
-    # cgroup v2 and explicitly checks /proc/self/cgroup for a real
-    # hierarchy prefix, which a container only sees with its cgroup
-    # namespace set to the host's rather than a fresh private one. Safe to
-    # combine with --privileged and the host cgroup bind-mount now that
-    # this runs under the real (rootful) docker daemon, not a rootless one.
+    # Diverges from that script in two ways:
+    #  - --cgroupns=host: upstream DOMjudge's create_cgroups
+    #    (judge/create_cgroups.in) now requires cgroup v2 and explicitly
+    #    checks /proc/self/cgroup for a real hierarchy prefix, which a
+    #    container only sees with its cgroup namespace set to the host's.
+    #  - --network=host: "console" and "domjudge" are separate VMs on a
+    #    virtual LAN here (unlike a real contest, where judgehost and
+    #    domserver are just two machines on the venue's own network) -
+    #    Docker's default bridge network needs NAT/iptables plumbing to
+    #    reach across that LAN, which failed in CI ("Failed to connect to
+    #    <domjudgeIp> port 80 ... Couldn't connect to server"). Host
+    #    networking sidesteps that entirely, matching how module.nix
+    #    already avoids the same complexity for domserver/mariadb.
     console.succeed(
-        f"{sudo} docker run -d --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup "
+        f"{sudo} docker run -d --privileged --cgroupns=host --network=host "
+        f"-v /sys/fs/cgroup:/sys/fs/cgroup "
         f"-e DOMSERVER_BASEURL=http://${domjudgeIp}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
