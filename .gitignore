@@ -2,3 +2,6 @@
 result
 
 *.img
+
+# zensical build output
+/site
