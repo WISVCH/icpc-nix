@@ -88,13 +88,21 @@
     ).strip()
 
     print("Starting judgehost against the domjudge node (same flags as chipcie-startup-scripts/start-judgehost.sh)")
-    # --cgroupns=host on top of the original script's flags: upstream
-    # DOMjudge's create_cgroups (judge/create_cgroups.in) now requires
-    # cgroup v2 and explicitly checks /proc/self/cgroup for a real
-    # hierarchy prefix, which a container only sees with its cgroup
-    # namespace set to the host's rather than a fresh private one.
+    # Diverges from that script's flags in two ways, both needed for
+    # rootless Docker (the script was written for rootful docker-ce):
+    #  - --cgroupns=host: upstream DOMjudge's create_cgroups
+    #    (judge/create_cgroups.in) now requires cgroup v2 and checks
+    #    /proc/self/cgroup for a real hierarchy prefix, which a container
+    #    only sees with its cgroup namespace set to the host's.
+    #  - No `-v /sys/fs/cgroup:/sys/fs/cgroup`: that bind-mounts the raw
+    #    host cgroup root, whose cgroup.subtree_control is root-owned and
+    #    not writable by the unprivileged "judgehost" user even with
+    #    --privileged (rootless Docker's daemon itself runs as that user,
+    #    so it can't grant capabilities beyond what the user already has).
+    #    Omitting it lets rootless Docker provide its own cgroup view,
+    #    rooted at systemd's per-user delegated (writable) slice instead.
     console.succeed(
-        f"{sudo} docker run -d --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup "
+        f"{sudo} docker run -d --privileged --cgroupns=host "
         f"-e DOMSERVER_BASEURL=http://${domjudgeIp}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
