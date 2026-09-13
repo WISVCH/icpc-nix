@@ -1,13 +1,13 @@
 # NixOS module for the ephemeral "domjudge" node used by
 # tests/contestant/domjudge.nix: a real DOMjudge (domserver + mariadb, via
 # the same WISVCH packaging images used elsewhere in this repo - see
-# images/console/home/icpcadmin.nix's judgehost pull) running as containers,
+# modules/home-manager/icpcadmin/judgehost-image.nix's judgehost pull) running as containers,
 # fronted by a native nginx that terminates TLS with a test-only cert (see
 # cert.nix) so self_test's unmodified `https://` autologin check can trust it.
 #
 # Also hosts hostnames_api and pdns (see tests/contestant/hostname.nix) -
 # production co-locates all three behind the same judge_ip (see
-# images/contestant/firewall.nix and vars.nix), so this ephemeral node
+# modules/nixos/contestant/firewall.nix and vars.nix), so this ephemeral node
 # mirrors that instead of standing up separate test nodes for them.
 { domjudgeIp, domjudgeUrl, cert, hostnamesApiUrl, hostnamesCert, dnsApiUrl, dnsCert }:
 { pkgs, lib, ... }:
@@ -50,7 +50,7 @@ let
 
   # The real chipcie-dns image bakes a production PowerDNS API key into
   # /etc/powerdns/pdns.conf. set_hostname.sh hardcodes API_KEY=changeme
-  # (see the TODO next to it in images/contestant/files/scripts -
+  # (see the TODO next to it in modules/nixos/contestant/files/scripts -
   # the real key can't be baked into this public repo until proper
   # secrets handling exists), so this test-only config just matches that
   # stub instead of touching the script. Everything else here mirrors

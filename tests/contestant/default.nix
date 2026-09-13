@@ -20,7 +20,7 @@ let
   domjudgeIp = "192.168.1.1";
   machineIp = "192.168.1.2";
   # firewall.nix resolves vars.hostnames_api/vars.dns_api to vars.judge_ip
-  # (see images/contestant/firewall.nix and vars.nix) exactly the same way
+  # (see modules/nixos/contestant/firewall.nix and vars.nix) exactly the same way
   # it resolves domjudge_url - overriding judge_ip here is enough to route
   # both at the "domjudge" node too, with no separate vars needed.
   testVars = vars // { domjudge_url = domjudgeUrl; judge_ip = domjudgeIp; };
@@ -77,15 +77,36 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 25 * 60;
 
   node.specialArgs = { inherit self inputs system; vars = testVars; };
-  # images/common.nix sets nixpkgs.config.allowUnfree, which runNixOSTest's
+  # modules/nixos/common sets nixpkgs.config.allowUnfree, which runNixOSTest's
   # default node.pkgs would otherwise make read-only.
   node.pkgsReadOnly = false;
 
   nodes.machine = {
     imports = [
-      ../../images/contestant
-      ../../images/common.nix
+      ../../modules/nixos/contestant
+      ../../modules/nixos/common
+      ../../hosts/contestant/users/contestant.nix
+      ../../hosts/contestant/users/icpcadmin.nix
     ];
+
+    # Explicit inventory of what the contestant image ships - mirrors
+    # hosts/contestant/configuration.nix, since this test builds the
+    # contestant module tree directly rather than through that host entrypoint.
+    modules.contestant.languages.enable = true;
+    modules.contestant.languages.c.enable = true;
+    modules.contestant.languages.cpp.enable = true;
+    modules.contestant.languages.python.enable = true;
+    modules.contestant.languages.java.enable = true;
+    modules.contestant.languages.kotlin.enable = true;
+
+    modules.contestant.ides.enable = true;
+    modules.contestant.ides.vscode.enable = true;
+    modules.contestant.ides.neovim.enable = true;
+    modules.contestant.ides.eclipse.enable = false;
+    modules.contestant.ides.jetbrains.enable = false;
+    modules.contestant.ides.idea.enable = false;
+    modules.contestant.ides.pycharm.enable = false;
+    modules.contestant.ides.clion.enable = false;
 
     # vmtouch.nix's warm-fs-cache service does `find / ... -print` to warm
     # the page cache on real hardware - pointless (and, empirically, slow
@@ -93,7 +114,7 @@ pkgs.testers.runNixOSTest {
     # single-boot test VM.
     systemd.services.warm-fs-cache.enable = lib.mkForce false;
 
-    # images/contestant/base.nix forces networking.useDHCP = true globally;
+    # base.nix forces networking.useDHCP = true globally;
     # left at its default (null -> inherits that global true) for eth1,
     # the static address below silently never gets applied at all (no
     # network-addresses-eth1 unit even runs) - confirmed by CI, where
@@ -118,7 +139,7 @@ pkgs.testers.runNixOSTest {
     # chipcie-dns's fixtures instead - test-only, no production code
     # changes needed.
     #
-    # This needed images/common.nix's own udev rule wiring fixed first -
+    # This needed modules/nixos/common's own udev rule wiring fixed first -
     # its "persistent-udev-rules" entry used to target an individual file
     # inside "udev/rules.d" via plain environment.etc, which conflicts with
     # NixOS's udev module making /etc/udev/rules.d a single whole-directory
