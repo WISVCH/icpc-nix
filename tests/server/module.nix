@@ -1,5 +1,10 @@
 { serverIp, cert }:
-{ lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 # The "server" node for every suite under tests/.
 #
@@ -14,6 +19,10 @@
 # Everything not overridden here - the container digests, the nginx vhosts,
 # the sops decryption path, the firewall - is exercised exactly as production
 # has it.
+let
+  images = import ../../modules/nixos/server/images.nix { inherit pkgs; };
+
+in
 {
   imports = [ ../../modules/nixos/server ];
 
@@ -65,6 +74,64 @@
   # production install path, so it is worth knowing that is the trade: the
   # real server still installs with example data, and nothing tests that.
   virtualisation.oci-containers.containers.domserver.environment.DJ_DB_INSTALL_BARE = "1";
+
+  # Load each image in its own unit, up front, instead of letting the
+  # container units load them in preStart.
+  #
+  # The problem being fixed is an ordering one, not a throughput one:
+  # oci-containers puts `podman load` in preStart, and containers.nix orders
+  # podman-domserver after podman-mariadb (deliberately - domserver's startup
+  # only retries mariadb for ~90s). So domserver's *image load* inherited a
+  # constraint only its *container start* needs, and did not begin until
+  # t=152, finishing at t=237 - which is when the unit the whole suite waits
+  # on could finally start. Loading here decouples the two.
+  #
+  # One unit per image, deliberately concurrent. A single unit loading all
+  # four sequentially was measured and is worse on both counts: the loads are
+  # I/O-latency-bound and overlap productively, so serialising them took the
+  # total from ~203s to ~309s, and making every container wait on one unit
+  # meant domserver could not start until hostnames and pdns - which nothing
+  # waits on - had loaded too, pushing container start from t=237 out to
+  # t=340. Each container now waits only for its own image.
+  systemd.services =
+    lib.mapAttrs' (
+      name: image:
+      lib.nameValuePair "preload-image-${name}" {
+        description = "Load the ${name} container image into podman storage";
+        wantedBy = [ "multi-user.target" ];
+        path = [ config.virtualisation.podman.package ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = "podman load -i ${image}";
+      }
+    ) images
+    // lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair "podman-${name}" {
+        requires = [ "preload-image-${name}.service" ];
+        after = [ "preload-image-${name}.service" ];
+      }
+    ) images;
+
+  # With imageFile unset, oci-containers' preStart neither loads nor pulls -
+  # its only network call is an optional registry login, which this module does
+  # not configure. pull = "never" then makes the reliance on those units
+  # explicit: if a preload ever fails, the container fails loudly instead of
+  # quietly reaching for a registry that a test VM cannot route to anyway.
+  #
+  # Unsetting imageFile does make the module add network-online.target to each
+  # container unit (it assumes an unset imageFile means "pull at runtime"),
+  # which is harmless here but is why these units gained that dependency.
+  virtualisation.oci-containers.containers.domserver.imageFile = lib.mkForce null;
+  virtualisation.oci-containers.containers.domserver.pull = "never";
+  virtualisation.oci-containers.containers.mariadb.imageFile = lib.mkForce null;
+  virtualisation.oci-containers.containers.mariadb.pull = "never";
+  virtualisation.oci-containers.containers.hostnames.imageFile = lib.mkForce null;
+  virtualisation.oci-containers.containers.hostnames.pull = "never";
+  virtualisation.oci-containers.containers.pdns.imageFile = lib.mkForce null;
+  virtualisation.oci-containers.containers.pdns.pull = "never";
 
   # A cert generated at first boot (the module's own default) can't be known
   # at build time, so the client nodes would have nothing to trust. Supply
