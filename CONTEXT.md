@@ -43,3 +43,7 @@ _Avoid_: signing key
 **Sign-image script**:
 The post-build step that writes shim, signed GRUB/kernel/initrd, and the certificate onto an already-built raw-efi image's ESP, using the release key. `nix build` itself always produces an unsigned image; signing only happens here, and only when the release key is available.
 _Avoid_: signing step, build step (this is deliberately not part of the Nix build — see `docs/adr/0002-sign-images-post-build.md`)
+
+**Live key**:
+The release key's counterpart for an already-deployed machine: a copy of the same private key placed at `/etc/icpc-nix/release.key` on that one machine, out of band, never through Nix. Its presence is what `scripts/sign-boot-live.sh` checks for on every `nixos-rebuild switch`/`boot` — present, it re-signs GRUB and every kernel in place; absent (the default, and always true inside a sandboxed `nix build`), it quietly does nothing.
+_Avoid_: local key, machine key
