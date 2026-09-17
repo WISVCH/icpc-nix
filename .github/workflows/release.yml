@@ -1,7 +1,7 @@
 name: Release image
 
-# Manually build a console/contestant image, cut a GitHub release for it,
-# and optionally deploy it straight to that image's Proxmox staging VM.
+# Manually build a console/contestant/server image, cut a GitHub release for
+# it, and optionally deploy it straight to that image's Proxmox staging VM.
 # Replaces the old console-v*/contestant-v* tag-push triggers: this
 # workflow creates the release tag itself, pointing at whichever branch
 # you dispatch it from.
@@ -16,6 +16,7 @@ on:
         options:
           - console
           - contestant
+          - server
       version:
         description: "Version to release, e.g. 1.4.0 (tag will be <image>-v<version>)"
         required: true

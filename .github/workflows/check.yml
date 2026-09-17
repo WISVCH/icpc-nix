@@ -33,6 +33,23 @@ jobs:
       - name: Build contestant system closure
         run: nix build .#nixosConfigurations.contestant.config.system.build.toplevel -L --no-link
 
+      - name: Build server system closure
+        run: nix build .#nixosConfigurations.server.config.system.build.toplevel -L --no-link
+
+      - name: Refuse production secrets in the server image
+        # secrets/dev.yaml's age key is committed and ships inside the server
+        # image, which is published as a release artifact - so anything
+        # encrypted to it is public. secrets/prod.yaml must therefore never be
+        # reachable from a build path. See secrets/README.md and
+        # docs/adr/0006. This catches the reference; it cannot catch a real
+        # password typed into dev.yaml.
+        run: |
+          if grep -rn "prod\.yaml" modules/nixos/server hosts/server flake.nix; then
+            echo "::error::server image build references secrets/prod.yaml - see secrets/README.md"
+            exit 1
+          fi
+          echo "no production secrets referenced by the server image"
+
   vm-tests:
     needs: check
     # Separate from `check` so a failing nixosTest (a real VM boot + service

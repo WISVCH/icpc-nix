@@ -9,6 +9,12 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Secrets for the server host (modules/nixos/server/secrets.nix).
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -105,6 +111,22 @@
             ./hosts/contestant/configuration.nix
           ];
         };
+
+        server = lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
+          };
+          modules = [
+            ./hosts/server/configuration.nix
+          ];
+        };
       };
 
       ## nix build .#console
@@ -159,6 +181,30 @@
           ];
         }).config.system.build.images.raw-efi;
 
+      ## nix build .#server
+      packages.x86_64-linux.server =
+        (lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit
+              self
+              inputs
+              system
+              vars
+              pkgs-unstable
+              ;
+          };
+          modules = [
+            ./modules/nixos/common
+            ./modules/nixos/server
+            ./hosts/server/users/icpcadmin.nix
+            # Shared with hosts/server/configuration.nix - deliberately not
+            # importing that file, since this build path excludes
+            # hardware-configuration.nix.
+            ./hosts/server/image.nix
+          ];
+        }).config.system.build.images.raw-efi;
+
       ## nix build .#shim
       packages.x86_64-linux.shim = shim;
 
@@ -172,8 +218,9 @@
         inherit pkgs self inputs system vars;
       };
 
-      ## nix run .#build-signed-console / .#build-signed-contestant
+      ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";
       apps.x86_64-linux.build-signed-contestant = mkBuildSignedApp "contestant";
+      apps.x86_64-linux.build-signed-server = mkBuildSignedApp "server";
     };
 }

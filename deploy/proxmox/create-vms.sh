@@ -1,9 +1,9 @@
 #!/bin/bash
-# Run this ONCE, as root, on the Proxmox host, to create the two staging
-# VMs (console, contestant) that the release workflow later deploys to.
+# Run this ONCE, as root, on the Proxmox host, to create the three staging
+# VMs (console, contestant, server) that the release workflow later deploys to.
 #
 # You need a raw-efi image for each already sitting on this host first —
-# build them with `nix build .#console` / `nix build .#contestant` and
+# build them with `nix build .#console` / `.#contestant` / `.#server` and
 # copy result/nixos.img over, or grab one from a GitHub release. The
 # image you import here becomes each VM's initial disk, so its size is
 # what the CI deploy step's pre-flight size check will compare future
@@ -64,6 +64,7 @@ esac
 
 create_vm() {
   local vmid="$1" name="$2" image_path="$3"
+  local memory="${4:-$MEMORY_MB}" cores="${5:-$CORES}"
 
   if qm status "$vmid" >/dev/null 2>&1; then
     echo "VMID $vmid already exists, skipping creation (check it by hand)" >&2
@@ -77,8 +78,8 @@ create_vm() {
   echo "creating VM $vmid ($name) from $image_path"
   qm create "$vmid" \
     --name "$name" \
-    --memory "$MEMORY_MB" \
-    --cores "$CORES" \
+    --memory "$memory" \
+    --cores "$cores" \
     --cpu host \
     --net0 "virtio,bridge=$BRIDGE" \
     --ostype l26 \
@@ -103,6 +104,10 @@ create_vm() {
   fi
   VOLID="${RAW#unused[0-9]*:}"
 
+  # scsi0 and nothing else: ci-deploy-image.sh overwrites the *first* disk it
+  # finds in `qm config` output, which is sorted alphabetically - an ide0 or
+  # sata0 disk added later would sort ahead of scsi0 and get clobbered in its
+  # place. Keep these VMs scsi-only.
   qm set "$vmid" --scsi0 "$VOLID"
   qm set "$vmid" --boot order=scsi0
   qm set "$vmid" --description "icpc-nix $name staging VM - managed by CI, see deploy/proxmox/ci-deploy-image.sh"
@@ -114,11 +119,18 @@ read -rp "Console VM ID: " CONSOLE_VMID
 read -rp "Path to built console raw image on this host: " CONSOLE_IMAGE
 read -rp "Contestant VM ID: " CONTESTANT_VMID
 read -rp "Path to built contestant raw image on this host: " CONTESTANT_IMAGE
+read -rp "Server VM ID [303]: " SERVER_VMID
+SERVER_VMID="${SERVER_VMID:-303}"
+read -rp "Path to built server raw image on this host: " SERVER_IMAGE
 
 create_vm "$CONSOLE_VMID" console "$CONSOLE_IMAGE"
 create_vm "$CONTESTANT_VMID" contestant "$CONTESTANT_IMAGE"
+# The server runs mariadb, domserver, hostnames_api and pdns side by side, so
+# it gets more than the console/contestant default.
+create_vm "$SERVER_VMID" server "$SERVER_IMAGE" "${SERVER_MEMORY_MB:-8192}" "${SERVER_CORES:-4}"
 
 echo
 echo "=== Done ==="
-echo "Use these same VMIDs ($CONSOLE_VMID, $CONTESTANT_VMID) when running setup.sh,"
-echo "and as PROXMOX_CONSOLE_VMID / PROXMOX_CONTESTANT_VMID in the GitHub repo variables."
+echo "Use these same VMIDs ($CONSOLE_VMID, $CONTESTANT_VMID, $SERVER_VMID) when running"
+echo "setup.sh, and as PROXMOX_CONSOLE_VMID / PROXMOX_CONTESTANT_VMID /"
+echo "PROXMOX_SERVER_VMID in the GitHub repo variables."
