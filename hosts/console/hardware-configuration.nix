@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   # qemu-guest.nix now comes from modules/nixos/common, which this host's
   # configuration.nix also imports.

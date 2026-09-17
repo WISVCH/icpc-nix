@@ -1,4 +1,10 @@
-{ config, lib, pkgs, vars, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  vars,
+  ...
+}:
 
 let
   cfg = config.modules.server.tls;

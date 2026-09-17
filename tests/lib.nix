@@ -1,4 +1,10 @@
-{ pkgs, self, inputs, system, vars }:
+{
+  pkgs,
+  self,
+  inputs,
+  system,
+  vars,
+}:
 
 # Shared wiring for every suite under tests/: the node definitions, the
 # addresses they reach each other on, the test certificate, and the runner
@@ -41,7 +47,11 @@ let
   # One cert, three names - see server/cert.nix.
   cert = import ./server/cert.nix {
     inherit pkgs;
-    names = [ domjudgeUrl hostnames_api dns_api ];
+    names = [
+      domjudgeUrl
+      hostnames_api
+      dns_api
+    ];
   };
 
   # A real serial/hostname pair from chipcie-dns's own
@@ -76,7 +86,10 @@ let
     virtualisation.interfaces.eth1.vlan = 1;
     networking.interfaces.eth1.useDHCP = lib.mkForce false;
     networking.interfaces.eth1.ipv4.addresses = [
-      { address = consoleIp; prefixLength = 24; }
+      {
+        address = consoleIp;
+        prefixLength = 24;
+      }
     ];
     # judgehost.nix's container uses --network=host, so it resolves
     # domjudgeUrl through whatever this VM itself resolves it to.
@@ -121,7 +134,10 @@ let
     virtualisation.interfaces.eth1.vlan = 1;
     networking.interfaces.eth1.useDHCP = lib.mkForce false;
     networking.interfaces.eth1.ipv4.addresses = [
-      { address = contestantIp; prefixLength = 24; }
+      {
+        address = contestantIp;
+        prefixLength = 24;
+      }
     ];
     networking.extraHosts = "${serverIp} ${domjudgeUrl}\n";
 
@@ -156,9 +172,11 @@ let
     };
   };
 
-  indent = script:
-    lib.concatMapStrings (line: "    " + line + "\n")
-      (lib.splitString "\n" (lib.removeSuffix "\n" script));
+  indent =
+    script:
+    lib.concatMapStrings (line: "    " + line + "\n") (
+      lib.splitString "\n" (lib.removeSuffix "\n" script)
+    );
 
   subtestScript = t: ''
     with subtest("${t.name}"):
@@ -180,8 +198,24 @@ let
   contestantSubtests = [
     (import ./contestant/domjudge.nix { inherit domjudgeUrl; })
     (import ./contestant/hostname.nix { inherit dns_zone testHostname; })
-    (import ./contestant/firewall.nix { inherit pkgs self inputs system vars; })
-    (import ./contestant/usbguard.nix { inherit pkgs self inputs system vars; })
+    (import ./contestant/firewall.nix {
+      inherit
+        pkgs
+        self
+        inputs
+        system
+        vars
+        ;
+    })
+    (import ./contestant/usbguard.nix {
+      inherit
+        pkgs
+        self
+        inputs
+        system
+        vars
+        ;
+    })
   ];
 
   consoleSubtests = [
@@ -193,11 +227,20 @@ let
     (import ./console/submissions.nix { inherit pkgs; })
   ];
 
-  mkSuite = { name, nodes, subtests, globalTimeout }:
+  mkSuite =
+    {
+      name,
+      nodes,
+      subtests,
+      globalTimeout,
+    }:
     pkgs.testers.runNixOSTest {
       inherit name globalTimeout nodes;
 
-      node.specialArgs = { inherit self inputs system; vars = testVars; };
+      node.specialArgs = {
+        inherit self inputs system;
+        vars = testVars;
+      };
       # modules/nixos/common sets nixpkgs.config.allowUnfree, which
       # runNixOSTest's default node.pkgs would otherwise make read-only.
       node.pkgsReadOnly = false;

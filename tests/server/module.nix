@@ -33,7 +33,10 @@
   # because it wasn't built on a base module that forced DHCP; this one is.
   networking.interfaces.eth1.useDHCP = lib.mkForce false;
   networking.interfaces.eth1.ipv4.addresses = [
-    { address = serverIp; prefixLength = 24; }
+    {
+      address = serverIp;
+      prefixLength = 24;
+    }
   ];
 
   # Was 6144 while this node was a bespoke test fixture. Lowered deliberately

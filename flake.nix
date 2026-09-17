@@ -222,17 +222,35 @@
       ## subtest fragments (see tests/lib.nix); they exist for the shorter
       ## feedback loop when iterating on one image, and are not run by CI.
       packages.x86_64-linux.vm-tests = import ./tests/all {
-        inherit pkgs self inputs system vars;
+        inherit
+          pkgs
+          self
+          inputs
+          system
+          vars
+          ;
       };
 
       ## nix build .#contestant-vm-tests
       packages.x86_64-linux.contestant-vm-tests = import ./tests/contestant {
-        inherit pkgs self inputs system vars;
+        inherit
+          pkgs
+          self
+          inputs
+          system
+          vars
+          ;
       };
 
       ## nix build .#console-vm-tests
       packages.x86_64-linux.console-vm-tests = import ./tests/console {
-        inherit pkgs self inputs system vars;
+        inherit
+          pkgs
+          self
+          inputs
+          system
+          vars
+          ;
       };
 
       ## nix fmt

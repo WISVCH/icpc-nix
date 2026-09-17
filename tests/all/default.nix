@@ -1,4 +1,10 @@
-{ pkgs, self, inputs, system, vars }:
+{
+  pkgs,
+  self,
+  inputs,
+  system,
+  vars,
+}:
 
 # The suite CI runs: all three images booted once, against one DOMjudge.
 #
@@ -12,7 +18,15 @@
 # compose these same fragments; they're the short loop when you're iterating
 # on one image. CI only runs this one.
 let
-  t = import ../lib.nix { inherit pkgs self inputs system vars; };
+  t = import ../lib.nix {
+    inherit
+      pkgs
+      self
+      inputs
+      system
+      vars
+      ;
+  };
 in
 t.mkSuite {
   name = "all";

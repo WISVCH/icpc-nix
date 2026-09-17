@@ -5,5 +5,6 @@
 # one are enabled, so this single switch turns all of them off at once
 # (e.g. during development, when the extra build/disk cost isn't worth it).
 {
-  options.modules.contestant.ides.jetbrains.enable = lib.mkEnableOption "JetBrains IDEs (IDEA/PyCharm/CLion)";
+  options.modules.contestant.ides.jetbrains.enable =
+    lib.mkEnableOption "JetBrains IDEs (IDEA/PyCharm/CLion)";
 }

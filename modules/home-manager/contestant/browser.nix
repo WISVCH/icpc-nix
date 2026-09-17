@@ -1,9 +1,13 @@
-{ lib, pkgs, vars, ... }:
+{
+  lib,
+  pkgs,
+  vars,
+  ...
+}:
 let
   inherit (vars) domjudge_url;
 in
 {
-
 
   programs.firefox = {
     enable = true;
@@ -18,27 +22,26 @@ in
             {
               name = "Sites";
               toolbar = true;
-              bookmarks =
-                [
-                  {
-                    name = "DOMjudge";
-                    url = "http://${domjudge_url}";
-                    # "Favicon" = "http://${domjudge_url}/favicon.ico";
-                  }
-                  {
-                    name = "DOMjudge team manual";
-                    url = "http://${domjudge_url }/doc/manual/domjudge-team-manual.pdf";
-                    # "Favicon" = "http://${domjudge_url}/favicon.ico";
-                  }
-                  {
-                    name = "Jury Advice";
-                    url = "http://localhost:8080/jury-advice.pdf";
-                  }
-                  {
-                    name = "Documentation";
-                    url = "http://localhost:8080";
-                  }
-                ];
+              bookmarks = [
+                {
+                  name = "DOMjudge";
+                  url = "http://${domjudge_url}";
+                  # "Favicon" = "http://${domjudge_url}/favicon.ico";
+                }
+                {
+                  name = "DOMjudge team manual";
+                  url = "http://${domjudge_url}/doc/manual/domjudge-team-manual.pdf";
+                  # "Favicon" = "http://${domjudge_url}/favicon.ico";
+                }
+                {
+                  name = "Jury Advice";
+                  url = "http://localhost:8080/jury-advice.pdf";
+                }
+                {
+                  name = "Documentation";
+                  url = "http://localhost:8080";
+                }
+              ];
             }
           ];
         };

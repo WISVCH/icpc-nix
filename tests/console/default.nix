@@ -1,4 +1,10 @@
-{ pkgs, self, inputs, system, vars }:
+{
+  pkgs,
+  self,
+  inputs,
+  system,
+  vars,
+}:
 
 # Console image only, against the shared server node - the short loop for
 # iterating on the console image and its judgehost.
@@ -7,7 +13,15 @@
 # added here must be added as a fragment in ../lib.nix, not inline, or the
 # merged suite won't pick it up.
 let
-  t = import ../lib.nix { inherit pkgs self inputs system vars; };
+  t = import ../lib.nix {
+    inherit
+      pkgs
+      self
+      inputs
+      system
+      vars
+      ;
+  };
 in
 t.mkSuite {
   name = "console";
