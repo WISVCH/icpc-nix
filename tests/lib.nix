@@ -62,7 +62,7 @@ let
 
   serverNode = import ./server/module.nix { inherit serverIp cert; };
 
-  consoleNode = { lib, ... }: {
+  consoleNode = { config, lib, ... }: {
     imports = [
       ../modules/nixos/console
       ../modules/nixos/common
@@ -94,6 +94,41 @@ let
     # judgehost.nix's container uses --network=host, so it resolves
     # domjudgeUrl through whatever this VM itself resolves it to.
     networking.extraHosts = "${serverIp} ${domjudgeUrl}\n";
+
+    # Load the judgehost image that icpcadmin's home stages
+    # (modules/home-manager/icpcadmin/judgehost-image.nix) during boot rather
+    # than from the test script. It was the single most expensive thing the
+    # suite did: 1.2 GiB compressed, and dockerTools.pullImage writes a
+    # docker-archive, which is uncompressed - so the script spent 143s copying
+    # it into the VM and another 75s unpacking it, 218s of a 621s run, with
+    # both already-booted nodes sitting idle throughout.
+    #
+    # As a boot unit it overlaps the server node's database install instead
+    # (see start_all() in mkSuite). Test-only on purpose: issue #54 settled
+    # that judgehost startup belongs to icpc-playbooks rather than this repo,
+    # so the real console image deliberately does not do this.
+    systemd.services.load-judgehost-image = {
+      description = "Load the staged judgehost container image";
+      requires = [ "docker.service" ];
+      # The tarball is read through the path home-manager stages it at, not
+      # its store path directly, so this still covers that staging actually
+      # happened - which is part of what judgehost-connect is about.
+      wants = [ "home-manager-icpcadmin.service" ];
+      after = [
+        "docker.service"
+        "home-manager-icpcadmin.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        # No private copy first: the subtest used to `install -o judgehost`
+        # one on the assumption that the judgehost user needed to own the
+        # file, but /nix/store is world-readable and this loads into the
+        # rootful daemon anyway.
+        ExecStart = "${config.virtualisation.docker.package}/bin/docker load -i /home/icpcadmin/judgehost/judgehost.tar.gz";
+      };
+    };
   };
 
   contestantNode = { lib, pkgs, ... }: {
@@ -250,7 +285,23 @@ let
       # chain) that don't need to succeed for these checks and have been
       # observed to hang boot indefinitely. Each subtest waits for exactly
       # the units it needs instead.
-      testScript = lib.concatMapStrings subtestScript subtests;
+      testScript = ''
+        # The driver otherwise boots a node lazily, on the first command
+        # addressed to it - so the three boots ran back to back (31s + 87s +
+        # 40s of a 621s suite), and the console node did not start at all
+        # until every contestant subtest had finished. Booting them together
+        # overlaps that, and lets the console's judgehost image load (see
+        # its node definition above) run while the server node is still
+        # installing DOMjudge's database.
+        #
+        # Peak memory is unchanged - all three nodes were already co-resident
+        # from judgehost-connect onwards, which is what the budgets above are
+        # sized for. Peak *CPU* during boot does rise: if mariadb's startup
+        # healthcheck starts timing out, this and that memorySize note are
+        # where to look, not a real regression.
+        start_all()
+      ''
+      + lib.concatMapStrings subtestScript subtests;
     };
 in
 {
