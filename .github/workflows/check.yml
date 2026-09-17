@@ -64,8 +64,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run contestant VM tests
-        run: nix build .#contestant-vm-tests -L
-
-      - name: Run console VM tests
-        run: nix build .#console-vm-tests -L
+      # One suite, three nodes, one DOMjudge. Previously this ran
+      # contestant-vm-tests and console-vm-tests back to back, each booting
+      # its own DOMjudge node and waiting through the same database
+      # install/migration - and with only one self-hosted runner registered,
+      # those could never overlap.
+      #
+      # The per-image suites (.#contestant-vm-tests, .#console-vm-tests) still
+      # exist for local iteration and compose the same fragments, but nothing
+      # runs them here, so they can rot. If one breaks, it broke in a way the
+      # merged suite doesn't cover - worth fixing rather than deleting.
+      - name: Run VM tests
+        run: nix build .#vm-tests -L

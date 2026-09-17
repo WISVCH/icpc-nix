@@ -1,6 +1,8 @@
 { ... }:
 
-# Subtest fragment for tests/contestant/default.nix.
+# Subtest fragment. Composed by tests/lib.nix into the merged tests/all
+# suite that CI runs, and into the per-image suite for iteration - it is
+# not tied to either one.
 #
 # Regression test for the contestant egress allowlist (docs/adr/0004): the
 # `contestant` user must be default-denied at the nftables output chain
@@ -15,16 +17,16 @@
     # been observed to hang boot indefinitely in this VM (see
     # tests/contestant/default.nix). Wait for exactly what this test needs
     # instead - the network up and the ruleset actually loaded.
-    machine.wait_for_unit("network-online.target", timeout=60)
-    machine.wait_for_unit("nftables.service", timeout=60)
+    contestant.wait_for_unit("network-online.target", timeout=60)
+    contestant.wait_for_unit("nftables.service", timeout=60)
 
     # The generated ruleset actually loaded, with the shape we expect -
     # catches Nix-level mistakes (bad syntax, a rule silently missing)
     # independent of what the sandboxed test network can actually reach.
     # nft resolves "contestant" to a UID at load time and may print either
     # the name or the raw UID back on list, so accept either.
-    ruleset = machine.succeed("nft list ruleset")
-    contestant_uid = machine.succeed("id -u contestant").strip()
+    ruleset = contestant.succeed("nft list ruleset")
+    contestant_uid = contestant.succeed("id -u contestant").strip()
     assert (
         "skuid contestant" in ruleset or f"skuid {contestant_uid}" in ruleset
     ), "contestant scoping rule missing from nftables ruleset"
@@ -34,11 +36,11 @@
     # "oif lo accept" rule) - a policy mistake that drops everything would
     # fail this, distinct from the pinned judge IP itself, which the
     # sandboxed test network can't reach at all.
-    machine.succeed(
+    contestant.succeed(
         "python3 -m http.server 8000 --directory /tmp >/tmp/http-server.log 2>&1 &"
     )
-    machine.wait_for_open_port(8000)
-    machine.succeed(
+    contestant.wait_for_open_port(8000)
+    contestant.succeed(
         "su - contestant -c 'curl --fail --silent --show-error --max-time 5 "
         "http://localhost:8000/' >/dev/null"
     )
@@ -50,14 +52,14 @@
     # since nothing listens on this port there) - the different failure
     # mode is what proves this is the firewall dropping it, not simply
     # "nothing is there."
-    gateway = machine.succeed("ip route show default | awk '{print $3}'").strip()
+    gateway = contestant.succeed("ip route show default | awk '{print $3}'").strip()
 
-    status, _ = machine.execute(
+    status, _ = contestant.execute(
         f"su - contestant -c 'curl --silent --max-time 3 http://{gateway}:9999/'"
     )
     assert status == 28, f"expected contestant's request to the gateway to be silently dropped (curl exit 28), got {status}"
 
-    status, _ = machine.execute(
+    status, _ = contestant.execute(
         f"curl --silent --max-time 3 http://{gateway}:9999/"
     )
     assert status == 7, f"expected icpcadmin/root's request to reach the gateway and be refused (curl exit 7), got {status}"
@@ -66,7 +68,7 @@
     # /etc/squid/autologin.conf, chown, systemctl restart squid) when squid
     # was removed - confirm it still runs cleanly and still writes the
     # netrc credentials icpc_setup.sh and the submit CLI both rely on.
-    machine.succeed("/icpc/scripts/set_domjudge_creds.sh testteam testpass")
-    machine.succeed("grep -q 'login testteam password testpass' /icpc/netrc")
+    contestant.succeed("/icpc/scripts/set_domjudge_creds.sh testteam testpass")
+    contestant.succeed("grep -q 'login testteam password testpass' /icpc/netrc")
   '';
 }

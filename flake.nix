@@ -208,6 +208,15 @@
       ## nix build .#shim
       packages.x86_64-linux.shim = shim;
 
+      ## nix build .#vm-tests
+      ## All three images booted once against a single server node - what CI
+      ## runs. The two suites below cover one image each and compose the same
+      ## subtest fragments (see tests/lib.nix); they exist for the shorter
+      ## feedback loop when iterating on one image, and are not run by CI.
+      packages.x86_64-linux.vm-tests = import ./tests/all {
+        inherit pkgs self inputs system vars;
+      };
+
       ## nix build .#contestant-vm-tests
       packages.x86_64-linux.contestant-vm-tests = import ./tests/contestant {
         inherit pkgs self inputs system vars;

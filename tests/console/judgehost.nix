@@ -1,4 +1,8 @@
-# Subtest fragment for tests/console/default.nix, covering issue #54's
+# Subtest fragment. Composed by tests/lib.nix into the merged tests/all
+# suite that CI runs, and into the per-image suite for iteration - it is
+# not tied to either one.
+#
+# Covers issue #54's
 # "ensure console judgehost can connect with judgehost" checklist item: the
 # console image's own pre-staged judgehost image (the same tarball
 # modules/home-manager/icpcadmin/judgehost-image.nix stages for real
@@ -58,15 +62,15 @@
     # firewall.nix runs) - restapi.secret doesn't exist until domserver has
     # finished its first-boot database install, so wait for that first.
     print("Waiting for DOMjudge's database install/migration to finish...")
-    domjudge.wait_for_unit("podman-mariadb.service")
-    domjudge.wait_for_unit("podman-domserver.service")
+    server.wait_for_unit("podman-mariadb.service")
+    server.wait_for_unit("podman-domserver.service")
     # nginx.service (the native reverse proxy judgehost's own HTTPS
     # registration goes through - see below) is a separate systemd unit
     # from the podman containers above, with no ordering dependency on
     # them - tests/contestant/domjudge.nix already waits for it
     # explicitly for the same reason.
-    domjudge.wait_for_unit("nginx.service")
-    domjudge.wait_until_succeeds(
+    server.wait_for_unit("nginx.service")
+    server.wait_until_succeeds(
         "curl --fail --silent http://127.0.0.1/api/v4/version", timeout=600
     )
 
@@ -84,12 +88,12 @@
     # "NOTE(password-mismatch)" placeholder instead of a real password - wait
     # for a clean, freshly-generated file rather than a one-shot read.
     secret = "/opt/domjudge/domserver/etc/restapi.secret"
-    domjudge.wait_until_succeeds(
+    server.wait_until_succeeds(
         "podman exec domserver sh -c "
         f"'test -s {secret} && ! grep -q \"^# NOTE\" {secret}'",
         timeout=120,
     )
-    password = domjudge.succeed(
+    password = server.succeed(
         f"podman exec domserver sh -c \"grep -v '^#' {secret} | cut -f4\""
     ).strip()
 
@@ -150,7 +154,7 @@
     console.succeed(f"{sudo} docker exec judgehost-0 update-ca-certificates")
 
     print("Waiting for domserver to see the judgehost register")
-    admin_password = domjudge.succeed(
+    admin_password = server.succeed(
         "podman exec domserver cat /opt/domjudge/domserver/etc/initial_admin_password.secret"
     ).strip()
     try:
@@ -161,7 +165,7 @@
         # up only as a silent timeout. Fail fast with a real timeout instead
         # of wait_until_succeeds' 900s default, and dump the container's own
         # logs/status on failure so CI actually explains what happened.
-        domjudge.wait_until_succeeds(
+        server.wait_until_succeeds(
             f"curl --fail --silent -u admin:{admin_password} "
             "http://127.0.0.1/api/v4/judgehosts | grep -q judgedaemon-0",
             timeout=90,

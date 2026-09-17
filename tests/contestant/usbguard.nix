@@ -1,6 +1,8 @@
 { ... }:
 
-# Subtest fragment for tests/contestant/default.nix.
+# Subtest fragment. Composed by tests/lib.nix into the merged tests/all
+# suite that CI runs, and into the per-image suite for iteration - it is
+# not tied to either one.
 #
 # Regression test for the contestant USB/hotplug device allowlist
 # (docs/adr/0005): a HID device (keyboard/mouse) plugged in after boot must
@@ -13,34 +15,34 @@
   name = "usbguard";
   script = ''
     # Not multi-user.target: see tests/contestant/default.nix for why.
-    machine.wait_for_unit("usbguard.service", timeout=60)
+    contestant.wait_for_unit("usbguard.service", timeout=60)
 
     # A HID device (keyboard, interface class 03) plugged in after boot is
     # allowed - contestant machines need to keep working with real
     # keyboards/mice/hubs.
-    machine.send_monitor_command("device_add usb-kbd,id=kbd0")
-    machine.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*03:'")
-    machine.succeed("usbguard list-devices | grep -E 'allow.*with-interface.*03:'")
+    contestant.send_monitor_command("device_add usb-kbd,id=kbd0")
+    contestant.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*03:'")
+    contestant.succeed("usbguard list-devices | grep -E 'allow.*with-interface.*03:'")
 
     # A mass-storage device (interface class 08) plugged in after boot is
     # blocked - not on the allowlist, and USB drives are a direct
     # data-exfiltration path.
-    with open(machine.state_dir / "usbstick.img", "wb") as stick:
+    with open(contestant.state_dir / "usbstick.img", "wb") as stick:
         stick.write(b"\x00" * (1024 * 1024))
-    machine.send_monitor_command(
+    contestant.send_monitor_command(
         f"drive_add 0 id=stick,if=none,file={stick.name},format=raw"
     )
-    machine.send_monitor_command("device_add usb-storage,id=stick,drive=stick")
-    machine.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*08:'")
-    machine.succeed("usbguard list-devices | grep -E 'block.*with-interface.*08:'")
+    contestant.send_monitor_command("device_add usb-storage,id=stick,drive=stick")
+    contestant.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*08:'")
+    contestant.succeed("usbguard list-devices | grep -E 'block.*with-interface.*08:'")
 
     # A network-interface-class device (USB-Ethernet/CDC, interface class
     # 02) plugged in after boot is blocked - the exact bypass this policy
     # exists to close (see docs/adr/0004 for why no host firewall config
     # can catch this instead).
-    machine.send_monitor_command("netdev_add user,id=usbnet0")
-    machine.send_monitor_command("device_add usb-net,id=usbnet_dev,netdev=usbnet0")
-    machine.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*02:'")
-    machine.succeed("usbguard list-devices | grep -E 'block.*with-interface.*02:'")
+    contestant.send_monitor_command("netdev_add user,id=usbnet0")
+    contestant.send_monitor_command("device_add usb-net,id=usbnet_dev,netdev=usbnet0")
+    contestant.wait_until_succeeds("usbguard list-devices | grep -E 'with-interface.*02:'")
+    contestant.succeed("usbguard list-devices | grep -E 'block.*with-interface.*02:'")
   '';
 }
