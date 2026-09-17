@@ -20,7 +20,11 @@ pkgs.stdenvNoCC.mkDerivation {
   pname = "icpc-nix-shim";
   version = "1.51-16.1-2~deb12u1";
 
-  nativeBuildInputs = [ pkgs.binutils pkgs.gnutar pkgs.xz ];
+  nativeBuildInputs = [
+    pkgs.binutils
+    pkgs.gnutar
+    pkgs.xz
+  ];
 
   dontUnpack = true;
 

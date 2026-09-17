@@ -1,12 +1,22 @@
 { vars, lib, ... }:
 let
-  inherit (vars) domjudge_url hostnames_api dns_api judge_ip;
+  inherit (vars)
+    domjudge_url
+    hostnames_api
+    dns_api
+    judge_ip
+    ;
 
   # Small, explicit, pinned-by-IP set of Google's public NTP servers.
   # DOMjudge submission timestamps depend on a correct clock, and venue NTP
   # servers can't be assumed ahead of time - pinning by IP (rather than
   # hostname) avoids reopening a DNS dependency just for time sync.
-  ntp_ips = [ "216.239.35.0" "216.239.35.4" "216.239.35.8" "216.239.35.12" ];
+  ntp_ips = [
+    "216.239.35.0"
+    "216.239.35.4"
+    "216.239.35.8"
+    "216.239.35.12"
+  ];
 in
 {
   # No DNS lookups needed for the judge infrastructure at all - the
@@ -14,7 +24,11 @@ in
   # keeps the contestant machine from having to trust any DNS resolution
   # for these names. See vars.nix for what judge_ip actually points at.
   networking.hosts = {
-    "${judge_ip}" = [ domjudge_url hostnames_api dns_api ];
+    "${judge_ip}" = [
+      domjudge_url
+      hostnames_api
+      dns_api
+    ];
   };
 
   networking.nftables = {

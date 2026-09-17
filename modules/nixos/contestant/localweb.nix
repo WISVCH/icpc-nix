@@ -1,4 +1,9 @@
-{ pkgs, lib, vars, ... }:
+{
+  pkgs,
+  lib,
+  vars,
+  ...
+}:
 
 let
   # C and C++ share the same cppreference book; only the index page differs.
@@ -22,7 +27,11 @@ let
     pname = "openjdk-17-api-docs";
     version = "17.0.20.1+1-1";
 
-    nativeBuildInputs = [ pkgs.binutils pkgs.gnutar pkgs.xz ];
+    nativeBuildInputs = [
+      pkgs.binutils
+      pkgs.gnutar
+      pkgs.xz
+    ];
 
     dontUnpack = true;
 

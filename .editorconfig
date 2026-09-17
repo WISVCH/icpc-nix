@@ -1,0 +1,43 @@
+# Editor defaults. Advisory only - nothing enforces this file, and it does not
+# reformat existing lines. The formatting that *is* checked is nixfmt via
+# treefmt; see treefmt.nix, `just fmt`, and `just fmt-check`.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# nixfmt's own indent, restated so an editor with no nixfmt wired up doesn't
+# fight `just fmt`.
+[*.nix]
+indent_size = 2
+
+[*.py]
+indent_size = 4
+
+# Two trailing spaces is a hard line break in Markdown. Trimming it silently
+# changes how the ADRs render.
+[*.md]
+trim_trailing_whitespace = false
+
+# XFCE rewrites these itself, on the machine, in its own layout. Anything we
+# "tidy" here comes back as diff noise the next time the config is exported.
+[modules/nixos/contestant/files/home_dirs/**]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Judge fixtures, not source. The solutions are compiled by the real
+# toolchains under test (hence the filenames javac pins), and the problem
+# data under problem/data/ is compared byte-for-byte by the judge.
+[tests/console/submissions/**]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# sops-encrypted / raw key material: whitespace changes invalidate the MAC.
+[secrets/{dev.yaml,dev-age-key.txt}]
+insert_final_newline = false
+trim_trailing_whitespace = false

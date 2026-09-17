@@ -9,7 +9,12 @@
     (modulesPath + "/profiles/qemu-guest.nix")
   ];
 
-  boot.kernelParams = [ "console=tty0" "consoleblank=0" "biosdevname=0" "net.ifnames=0" ];
+  boot.kernelParams = [
+    "console=tty0"
+    "consoleblank=0"
+    "biosdevname=0"
+    "net.ifnames=0"
+  ];
 
   # virtualisation.diskSize (the raw-efi image's disk size) used to live here,
   # but it's a per-image number that has to match each Proxmox VM's own disk -

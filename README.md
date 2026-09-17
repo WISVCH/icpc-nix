@@ -25,6 +25,24 @@ qemu-system-x86_64 -drive if=pflash,format=raw,unit=0,readonly=on,file="$OVMF_CO
 
 The image can also be tested in Proxmox: import `result/nixos.img` as a VM disk (`qm importdisk`, or attach it directly), set the VM's BIOS to **OVMF**, and boot — no ISO/CD-ROM step needed since it's a bootable disk image, not installation media.
 
+## Formatting
+
+Nix files are formatted with [nixfmt](https://github.com/NixOS/nixfmt) (RFC 166
+style), orchestrated by [treefmt](https://github.com/numtide/treefmt-nix).
+Config lives in `treefmt.nix`.
+
+```bash
+just fmt        # format in place
+just fmt-check  # what CI checks, without writing
+```
+
+`nix flake check` runs the same check, so a PR with unformatted Nix fails
+`.github/workflows/check.yml`.
+
+`.git-blame-ignore-revs` lists the one repo-wide reformat commit. GitHub's
+blame view honours it automatically; for local `git blame`, run `just
+setup-blame` once per clone.
+
 ## Building the docs
 
 Docs live under `docs/public/` and are built with [zensical](https://zensical.org/). Preview them locally:

@@ -11,17 +11,18 @@
 # client nodes are made to trust this cert instead (see ../lib.nix).
 { pkgs, names }:
 let
-  generated = pkgs.runCommand "server-test-cert" {
-    nativeBuildInputs = [ pkgs.openssl ];
-  } ''
-    mkdir -p $out
-    openssl req -x509 -newkey rsa:2048 -nodes \
-      -keyout $out/key.pem -out $out/cert.pem \
-      -days 3650 -subj "/CN=${builtins.head names}" \
-      -addext "subjectAltName=${
-        pkgs.lib.concatMapStringsSep "," (n: "DNS:${n}") names
-      }"
-  '';
+  generated =
+    pkgs.runCommand "server-test-cert"
+      {
+        nativeBuildInputs = [ pkgs.openssl ];
+      }
+      ''
+        mkdir -p $out
+        openssl req -x509 -newkey rsa:2048 -nodes \
+          -keyout $out/key.pem -out $out/cert.pem \
+          -days 3650 -subj "/CN=${builtins.head names}" \
+          -addext "subjectAltName=${pkgs.lib.concatMapStringsSep "," (n: "DNS:${n}") names}"
+      '';
 in
 {
   cert = "${generated}/cert.pem";

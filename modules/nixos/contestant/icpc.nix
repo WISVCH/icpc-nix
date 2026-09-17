@@ -1,4 +1,10 @@
-{ pkgs, lib, vars, self, ... }:
+{
+  pkgs,
+  lib,
+  vars,
+  self,
+  ...
+}:
 let
   on_boot_text = builtins.readFile ./files/scripts/on_boot.sh;
   on_boot = pkgs.writeShellScriptBin "on-boot" on_boot_text;
@@ -31,13 +37,16 @@ let
   # this script its own self-contained wrapped interpreter sidesteps that
   # entirely, without touching the shared systemPackages python3 (avoiding a
   # bin/python3 collision with compilers.nix's separate plain `python3`).
-  escapeMarkup = pkgs.writers.writePython3Bin "escape-markup" {
-    libraries = [ pkgs.python3Packages.pygobject3 ];
-  } ''
-    from gi.repository import GLib
-    import sys
-    print(GLib.markup_escape_text(" ".join(sys.argv[1:])).replace("&", "\\&"))
-  '';
+  escapeMarkup =
+    pkgs.writers.writePython3Bin "escape-markup"
+      {
+        libraries = [ pkgs.python3Packages.pygobject3 ];
+      }
+      ''
+        from gi.repository import GLib
+        import sys
+        print(GLib.markup_escape_text(" ".join(sys.argv[1:])).replace("&", "\\&"))
+      '';
 in
 
 rec {

@@ -12,7 +12,11 @@
     # HTTP and have no reason to deal with this host's certificate. 53 is
     # PowerDNS. The pdns API port (8081) and hostnames_api's port (8000) are
     # deliberately not opened - they're reachable only through nginx.
-    firewall.allowedTCPPorts = [ 80 443 53 ];
+    firewall.allowedTCPPorts = [
+      80
+      443
+      53
+    ];
     firewall.allowedUDPPorts = [ 53 ];
   };
 

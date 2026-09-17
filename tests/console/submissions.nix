@@ -26,9 +26,24 @@ let
   cid = "icpcnixtest";
 
   languages = [
-    { id = "c"; file = ./submissions/solutions/sum.c; fileName = "sum.c"; entryPointFlag = ""; }
-    { id = "cpp"; file = ./submissions/solutions/sum.cpp; fileName = "sum.cpp"; entryPointFlag = ""; }
-    { id = "java"; file = ./submissions/solutions/Main.java; fileName = "Main.java"; entryPointFlag = ""; }
+    {
+      id = "c";
+      file = ./submissions/solutions/sum.c;
+      fileName = "sum.c";
+      entryPointFlag = "";
+    }
+    {
+      id = "cpp";
+      file = ./submissions/solutions/sum.cpp;
+      fileName = "sum.cpp";
+      entryPointFlag = "";
+    }
+    {
+      id = "java";
+      file = ./submissions/solutions/Main.java;
+      fileName = "Main.java";
+      entryPointFlag = "";
+    }
     {
       id = "kotlin";
       file = ./submissions/solutions/Main.kt;
@@ -38,7 +53,12 @@ let
       # can't infer this itself (unlike java's 'java_javac_detect' script).
       entryPointFlag = "-F entry_point=MainKt ";
     }
-    { id = "python3"; file = ./submissions/solutions/sum.py; fileName = "sum.py"; entryPointFlag = ""; }
+    {
+      id = "python3";
+      file = ./submissions/solutions/sum.py;
+      fileName = "sum.py";
+      entryPointFlag = "";
+    }
   ];
 
   submitOne = lang: ''

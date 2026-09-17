@@ -16,7 +16,11 @@
 # the design discussion on issue #54: that would newly make icpc-nix, not
 # icpc-playbooks, responsible for judgehost startup, a bigger change than
 # this test needs).
-{ domjudgeIp, domjudgeUrl, domjudgeCert }:
+{
+  domjudgeIp,
+  domjudgeUrl,
+  domjudgeCert,
+}:
 {
   name = "judgehost-connect";
   script = ''
