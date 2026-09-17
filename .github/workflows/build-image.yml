@@ -62,12 +62,16 @@ permissions:
 jobs:
   build:
     runs-on: [self-hosted, nix-builder]
+    # Builds an image, signs it, uploads to GCS and optionally deploys to
+    # Proxmox, all on the only nix-builder - generous, but bounded, so a hung
+    # step can't hold the runner to GitHub's 6h default (see check.yml).
+    timeout-minutes: 180
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Compute release tag
         id: tag

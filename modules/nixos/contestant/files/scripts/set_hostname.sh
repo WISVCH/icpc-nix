@@ -28,7 +28,14 @@ ROOT_MNT=$(findmnt -n -o SOURCE /)
 SERIAL=$(udevadm info --name=$ROOT_MNT | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')
 
 # Fetch desired hostname from API
-HOSTNAME=$(curl -s --retry 5 --retry-all-errors --retry-delay 1 https://@hostnames_api@/hostnames/$SERIAL/ | jq -r .hostname//empty)
+# --connect-timeout/--max-time: without them a blackholed hostnames_api
+# (SYN dropped rather than refused) hangs curl indefinitely - and
+# firstboot.service runs this with TimeoutSec=0, ordered before
+# display-manager.service, so the operator waiting at the tty5 gate never
+# gets a screen to read at all. Both apply per attempt, so with the retries
+# below the worst case is bounded at a couple of minutes and then the
+# "Could not submit hostname!" error, rather than never.
+HOSTNAME=$(curl -s --retry 5 --retry-all-errors --retry-delay 1 --connect-timeout 5 --max-time 30 https://@hostnames_api@/hostnames/$SERIAL/ | jq -r .hostname//empty)
 
 # Check if we found a hostname
 if [ -z "$HOSTNAME" ]
@@ -57,4 +64,4 @@ API_KEY=changeme
 DNS_DATA='{"rrsets":[{"name":"'$HOSTNAME.@dns_zone@.'","ttl":3600,"type":"A","changetype":"REPLACE","records":[{"content":"'$IP'","disabled":false}]}]}'
 ENDPOINT=https://@dns_api@/api/v1/servers/localhost/zones/@dns_zone@.
 
-curl -s --retry 5 --retry-all-errors --retry-delay 1 -H "X-API-Key: $API_KEY" -H "Content-Type: application/json"  -X PATCH  --data $DNS_DATA $ENDPOINT
+curl -s --retry 5 --retry-all-errors --retry-delay 1 --connect-timeout 5 --max-time 30 -H "X-API-Key: $API_KEY" -H "Content-Type: application/json"  -X PATCH  --data $DNS_DATA $ENDPOINT

@@ -37,6 +37,16 @@ on:
         type: boolean
         default: true
 
+# Image releases queue instead of racing: build-image.yml runs on the single
+# self-hosted nix-builder, and two concurrent releases would fight it (and
+# each other's Proxmox deploy step). Deliberately no cancel-in-progress -
+# cancelling a half-finished release can leave a tag, a GitHub release, or a
+# partially uploaded artifact behind. The group lives here rather than in
+# build-image.yml so the caller and callee can't wait on each other.
+concurrency:
+  group: image-release
+  cancel-in-progress: false
+
 jobs:
   build:
     uses: ./.github/workflows/build-image.yml

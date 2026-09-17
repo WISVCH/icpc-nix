@@ -12,6 +12,16 @@ in
   programs.firefox = {
     enable = true;
     package = pkgs.firefox-esr;
+    # Pinned to the pre-26.05 default, which home.stateVersion = "26.05"
+    # would otherwise move to $XDG_CONFIG_HOME/mozilla/firefox.
+    # set_domjudge_creds.sh ends in `rm -rf /home/*/.mozilla` so that a
+    # credential change forces Firefox to re-read the rebuilt autologin
+    # addon; under the new default that wipe silently matches nothing and the
+    # stale profile - with the previous team's config.js baked into its
+    # cached XPI - survives on a live machine between teams. Adopting the XDG
+    # path means changing that wipe too, covered by a test that sets
+    # credentials twice.
+    configPath = ".mozilla/firefox";
     profiles = {
       default = {
         # extensions = [ ];

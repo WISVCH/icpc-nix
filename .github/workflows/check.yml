@@ -1,7 +1,8 @@
 name: Check
 
-# Validates that the flake evaluates and both system configurations build,
-# so a commit is known-good before it gets tagged for an image release.
+# Validates that the flake evaluates and all three system configurations
+# build, so a commit is known-good before it gets tagged for an image
+# release.
 #
 # Runner requirements: same self-hosted "nix-builder" runner used by
 # build-image.yml (Nix with flakes + nix-command enabled).
@@ -13,16 +14,40 @@ on:
     paths-ignore:
       - "docs/**"
       - "zensical.toml"
+  # main itself was never validated: a PR is checked against its own merge
+  # commit, but a base that moved underneath it afterwards was not
+  # re-checked, and release.yml/build-image.yml don't depend on this
+  # workflow at all - so the first thing to build a given main was whatever
+  # release someone cut from it. The store is warm right after a merge, so
+  # `check` costs seconds here. vm-tests stays PR-only, see its `if`.
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "zensical.toml"
+
+# One run per ref. Pushing twice to a PR used to leave the superseded run
+# building on the single self-hosted nix-builder, competing for it with the
+# run that replaced it (and with every other open PR).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: [self-hosted, nix-builder]
+    # Without a job timeout a hung step runs to GitHub's 6h default: run
+    # 34836638349 held the only nix-builder for 6h5m40s before it was
+    # cancelled by hand. Generous against observed times - a warm run is
+    # ~30s, a cold one a few minutes - just not unbounded.
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Flake check
         run: nix flake check -L
@@ -56,13 +81,24 @@ jobs:
     # checks, slower than the steps above) never blocks that job, and never
     # blocks deploy either - release.yml/build-image.yml don't depend on
     # this workflow at all.
+    #
+    # PR-only: on a push to main `check` is the cheap re-validation of the
+    # merge result, while re-running this suite there would mostly re-prove
+    # what it already proved against the PR's merge commit - on the single
+    # runner every open PR is queued behind.
+    if: github.event_name == 'pull_request'
     runs-on: [self-hosted, nix-builder]
+    # tests/all sets its own globalTimeout of 45 minutes; this is the outer
+    # bound for that plus building the three node closures, so a wedged VM
+    # (or a hang before the suite's own timer starts) can't sit on the runner
+    # indefinitely.
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # One suite, three nodes, one DOMjudge. Previously this ran
       # contestant-vm-tests and console-vm-tests back to back, each booting
@@ -74,5 +110,8 @@ jobs:
       # exist for local iteration and compose the same fragments, but nothing
       # runs them here, so they can rot. If one breaks, it broke in a way the
       # merged suite doesn't cover - worth fixing rather than deleting.
+      #
+      # --no-link: without it this drops a `result` symlink into the runner's
+      # workspace, which the next run's checkout then reports removing.
       - name: Run VM tests
-        run: nix build .#vm-tests -L
+        run: nix build .#vm-tests -L --no-link
