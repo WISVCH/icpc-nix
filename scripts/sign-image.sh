@@ -94,4 +94,43 @@ if ! sbverify --cert "$ICPC_NIX_SIGNING_CERT" "$WORK/grubx64.efi.verify" >&2; th
   exit 1
 fi
 
-echo "OK: $IMAGE signed (shim + release-signed grubx64.efi; cert at EFI/keys/icpc-nix.cer)" >&2
+# GRUB's own install-grub.pl (copyToKernelsDir) copies the kernel and initrd
+# into /kernels on the ESP, named after their /nix/store path with "/"
+# replaced by "-" - no extension. Once shim trusts our signed GRUB, GRUB's
+# `linux` command hands the kernel off to firmware via EFI LoadImage (the
+# EFI-stub handover), which goes through shim's LoadImage hook just like the
+# grubx64.efi load above - so the kernel needs the same signature, or shim
+# rejects it even with a fully-trusted GRUB in front of it.
+#
+# The initrd does NOT need this: GRUB's `initrd` command reads it as a plain
+# data blob (never passed to LoadImage), so shim never checks it. Signing it
+# would be a no-op at best.
+echo "== ESP /kernels before signing ==" >&2
+mdir_i "::/kernels" >&2
+
+mapfile -t KERNEL_CANDIDATES < <(mdir_i -b "::/kernels" | grep -i 'bzimage')
+if [ "${#KERNEL_CANDIDATES[@]}" -eq 0 ]; then
+  echo "error: no kernel (*bzImage*) found under /kernels on the ESP" >&2
+  exit 1
+elif [ "${#KERNEL_CANDIDATES[@]}" -gt 1 ]; then
+  echo "error: expected exactly one kernel under /kernels, found ${#KERNEL_CANDIDATES[@]}: ${KERNEL_CANDIDATES[*]}" >&2
+  echo "       (this image build must be evaluating more than one boot generation - sign-image.sh only knows how to sign a single-generation image)" >&2
+  exit 1
+fi
+KERNEL_NAME="${KERNEL_CANDIDATES[0]}"
+
+mcopy_i "::/kernels/$KERNEL_NAME" "$WORK/kernel.unsigned"
+
+sbsign --key "$ICPC_NIX_SIGNING_KEY" --cert "$ICPC_NIX_SIGNING_CERT" \
+  --output "$WORK/kernel.signed" "$WORK/kernel.unsigned"
+
+mdel_i "::/kernels/$KERNEL_NAME"
+mcopy_i -o "$WORK/kernel.signed" "::/kernels/$KERNEL_NAME"
+
+mcopy_i "::/kernels/$KERNEL_NAME" "$WORK/kernel.verify"
+if ! sbverify --cert "$ICPC_NIX_SIGNING_CERT" "$WORK/kernel.verify" >&2; then
+  echo "error: signature verification failed on the signed kernel ($KERNEL_NAME)" >&2
+  exit 1
+fi
+
+echo "OK: $IMAGE signed (shim + release-signed grubx64.efi + kernel; cert at EFI/keys/icpc-nix.cer)" >&2
