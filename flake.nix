@@ -23,7 +23,6 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
-      flake-utils,
       ...
     }:
     let
