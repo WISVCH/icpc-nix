@@ -86,6 +86,14 @@ pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 4096;
     virtualisation.cores = 2;
 
+    # Previously inherited from modules/nixos/common's boot.nix, which pinned
+    # this for every host that imported it. That pin moved to
+    # hosts/<host>/image.nix (it's a per-image number that has to match the
+    # target Proxmox disk), so state it here explicitly rather than falling
+    # back to nixosTest's "auto" sizing - this node writes a container image
+    # and compiled submissions into a disk auto-sizes only for the closure.
+    virtualisation.diskSize = 20 * 1024;
+
     # base.nix forces networking.useDHCP = true globally;
     # left at its default (null -> inherits that global true) for eth1, the
     # static address below would otherwise silently never get applied - see
