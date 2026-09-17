@@ -47,6 +47,25 @@
   virtualisation.cores = 2;
   virtualisation.diskSize = 8192;
 
+  # Schema and default data only, skipping DOMjudge's example data - the demo
+  # contest, its example problems and their jury solutions. The domserver
+  # image ships DJ_DB_INSTALL_BARE=0, and importing all of that is the bulk of
+  # the ~100s this node spends in podman-domserver's first start (it is also
+  # where every "Annotated result ... does not match directory" and
+  # "unknown language" warning in the logs comes from).
+  #
+  # Nothing under tests/ uses it: each suite creates its own icpcnixtest
+  # contest, sum problem and submissions. The testteam account both suites
+  # seed with "team_id": "1" still resolves, because DOMjudge's *default*
+  # fixtures create team 1 themselves ("DOMjudge", in the system category -
+  # webapp/src/DataFixtures/DefaultData/TeamFixture.php); example data only
+  # adds a second team next to it.
+  #
+  # This is the one place these suites deliberately stop exercising the
+  # production install path, so it is worth knowing that is the trade: the
+  # real server still installs with example data, and nothing tests that.
+  virtualisation.oci-containers.containers.domserver.environment.DJ_DB_INSTALL_BARE = "1";
+
   # A cert generated at first boot (the module's own default) can't be known
   # at build time, so the client nodes would have nothing to trust. Supply
   # one from the store instead and turn the generator off.
