@@ -1,0 +1,8 @@
+# Commits that changed formatting only, and should be skipped by git blame.
+#
+# GitHub's blame view reads this file automatically. For local git blame:
+#   just setup-blame
+# (which is: git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# apply nixfmt across the repo
+285d1eea7798344e6deecfe46e5a1bb168ce1a4d
