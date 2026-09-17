@@ -134,6 +134,14 @@
         f"{sudo} docker run -d --privileged --cgroupns=host --network=host "
         "-v /sys/fs/cgroup:/sys/fs/cgroup "
         "--add-host ${domjudgeUrl}:${domjudgeIp} "
+        # judgedaemon shells out to sudo for every chroot script it runs, and
+        # sudo resolves the machine's own hostname on each call. --hostname
+        # below sets it without adding a matching /etc/hosts entry, so with
+        # no resolver that answers for it every one of those calls logged
+        # "sudo: unable to resolve host judgedaemon-0: Temporary failure in
+        # name resolution" - 272 lines in a single CI run, none of them a
+        # real fault.
+        "--add-host judgedaemon-0:127.0.0.1 "
         f"-e DOMSERVER_BASEURL=https://${domjudgeUrl}/ -e JUDGEDAEMON_PASSWORD={password} -e DAEMON_ID=0 "
         f"--hostname judgedaemon-0 --name judgehost-0 {judgehost_image}"
     )
