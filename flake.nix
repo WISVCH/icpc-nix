@@ -15,6 +15,12 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Repo-wide formatting; config lives in ./treefmt.nix.
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -23,6 +29,7 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      treefmt-nix,
       ...
     }:
     let
@@ -31,6 +38,8 @@
       vars = import ./vars.nix { };
       pkgs = import nixpkgs { inherit system; };
       pkgs-unstable = import nixpkgs-unstable { inherit system; };
+
+      treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
 
       shim = import ./packages/shim.nix {
         inherit pkgs;
@@ -225,6 +234,14 @@
       packages.x86_64-linux.console-vm-tests = import ./tests/console {
         inherit pkgs self inputs system vars;
       };
+
+      ## nix fmt
+      formatter.x86_64-linux = treefmtEval.config.build.wrapper;
+
+      ## Run by `nix flake check`, and buildable on its own with
+      ## `just fmt-check` - unlike the rest of `nix flake check`, this
+      ## derivation needs no access to the private icpc-playbooks input.
+      checks.x86_64-linux.formatting = treefmtEval.config.build.check self;
 
       ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";
