@@ -87,26 +87,20 @@ pkgs.testers.runNixOSTest {
       ../../modules/nixos/common
       ../../hosts/contestant/users/contestant.nix
       ../../hosts/contestant/users/icpcadmin.nix
+      # The same language/IDE inventory the image ships - imported rather
+      # than restated here, so this test can't silently drift from what
+      # hosts/contestant/image.nix actually builds. Deliberately not
+      # image.nix itself: its disk size and image.baseName mean nothing
+      # inside a nixosTest VM.
+      ../../hosts/contestant/inventory.nix
     ];
 
-    # Explicit inventory of what the contestant image ships - mirrors
-    # hosts/contestant/configuration.nix, since this test builds the
-    # contestant module tree directly rather than through that host entrypoint.
-    modules.contestant.languages.enable = true;
-    modules.contestant.languages.c.enable = true;
-    modules.contestant.languages.cpp.enable = true;
-    modules.contestant.languages.python.enable = true;
-    modules.contestant.languages.java.enable = true;
-    modules.contestant.languages.kotlin.enable = true;
-
-    modules.contestant.ides.enable = true;
-    modules.contestant.ides.vscode.enable = true;
-    modules.contestant.ides.neovim.enable = true;
-    modules.contestant.ides.eclipse.enable = false;
-    modules.contestant.ides.jetbrains.enable = false;
-    modules.contestant.ides.idea.enable = false;
-    modules.contestant.ides.pycharm.enable = false;
-    modules.contestant.ides.clion.enable = false;
+    # Previously inherited from modules/nixos/common's boot.nix, which pinned
+    # this for every host that imported it. That pin moved to
+    # hosts/<host>/image.nix (it's a per-image number that has to match the
+    # target Proxmox disk), so state it here explicitly rather than falling
+    # back to nixosTest's "auto" sizing, which sizes only for the closure.
+    virtualisation.diskSize = 20 * 1024;
 
     # vmtouch.nix's warm-fs-cache service does `find / ... -print` to warm
     # the page cache on real hardware - pointless (and, empirically, slow

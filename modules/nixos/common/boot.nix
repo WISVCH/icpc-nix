@@ -11,11 +11,9 @@
 
   boot.kernelParams = [ "console=tty0" "consoleblank=0" "biosdevname=0" "net.ifnames=0" ];
 
-  # The raw-efi format reads this via config.virtualisation.diskSize to pick
-  # the disk image size (make-disk-image.nix). It must match the size of the
-  # existing Proxmox VM disks exactly, since deploy/proxmox/ci-deploy-image.sh
-  # refuses to deploy an image whose size differs from the target disk.
-  virtualisation.diskSize = 20 * 1024;
+  # virtualisation.diskSize (the raw-efi image's disk size) used to live here,
+  # but it's a per-image number that has to match each Proxmox VM's own disk -
+  # it's set in hosts/<host>/image.nix now.
 
   # Native `system.build.images.raw-efi` (nixos/modules/virtualisation/disk-image.nix)
   # defaults boot.loader.systemd-boot.enable to true whenever EFI support is

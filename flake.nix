@@ -126,17 +126,10 @@
             ./hosts/console/users/icpcadmin.nix
             ./hosts/console/users/icpctools.nix
             ./hosts/console/users/judgehost.nix
-            {
-              system.stateVersion = "23.11";
-              # image.baseName only exists within the per-format extended
-              # eval (config.system.build.images.<format>), not the top-level
-              # config, so it's set via image.modules.raw-efi rather than
-              # directly - deferredModule merges this in alongside the
-              # built-in raw-efi definition (nixos/modules/image/images.nix).
-              image.modules.raw-efi = {
-                image.baseName = "nixos";
-              };
-            }
+            # Shared with hosts/console/configuration.nix - deliberately not
+            # importing that file, since this build path excludes
+            # hardware-configuration.nix.
+            ./hosts/console/image.nix
           ];
         }).config.system.build.images.raw-efi;
 
@@ -158,36 +151,11 @@
             ./modules/nixos/contestant
             ./hosts/contestant/users/contestant.nix
             ./hosts/contestant/users/icpcadmin.nix
-            {
-              system.stateVersion = "23.11";
-              # image.baseName only exists within the per-format extended
-              # eval (config.system.build.images.<format>), not the top-level
-              # config, so it's set via image.modules.raw-efi rather than
-              # directly - deferredModule merges this in alongside the
-              # built-in raw-efi definition (nixos/modules/image/images.nix).
-              image.modules.raw-efi = {
-                image.baseName = "nixos";
-              };
-
-              # Explicit inventory of what this image ships - mirrors
-              # hosts/contestant/configuration.nix (kept separate since this
-              # build path deliberately excludes hardware-configuration.nix).
-              modules.contestant.languages.enable = true;
-              modules.contestant.languages.c.enable = true;
-              modules.contestant.languages.cpp.enable = true;
-              modules.contestant.languages.python.enable = true;
-              modules.contestant.languages.java.enable = true;
-              modules.contestant.languages.kotlin.enable = true;
-
-              modules.contestant.ides.enable = true;
-              modules.contestant.ides.vscode.enable = true;
-              modules.contestant.ides.neovim.enable = true;
-              modules.contestant.ides.eclipse.enable = false;
-              modules.contestant.ides.jetbrains.enable = false;
-              modules.contestant.ides.idea.enable = false;
-              modules.contestant.ides.pycharm.enable = false;
-              modules.contestant.ides.clion.enable = false;
-            }
+            # Shared with hosts/contestant/configuration.nix (which also
+            # pulls in the language/IDE inventory via image.nix) -
+            # deliberately not importing that file, since this build path
+            # excludes hardware-configuration.nix.
+            ./hosts/contestant/image.nix
           ];
         }).config.system.build.images.raw-efi;
 
