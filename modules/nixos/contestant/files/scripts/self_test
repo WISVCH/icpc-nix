@@ -73,10 +73,36 @@ IP="$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')"
 echo $IP
 print_check "Hostname"
 HOSTNAME="$(hostname)"
-echo $HOSTNAME
+# set_hostname.sh (run from on_boot.sh at firstboot) replaces the image's
+# built-in hostname with the one hostnames_api hands out for this machine's
+# USB serial, and publishes an A record for it. Two ways that ends badly,
+# both of which leave a machine nobody can reach by name:
+#
+#  - still the built-in name: set_hostname.sh never ran, or its lookup came
+#    back empty (it exits 1 without setting anything, so the DNS PATCH below
+#    it never runs either).
+#  - "unknown<N>": hostnames_api answered, but doesn't have this serial in
+#    its stick list, so it handed out a placeholder instead of a real pc<N>.
+#    Register the serial printed here to fix it.
+#
+# The parenthetical is not decoration: icpc_setup.sh pipes this script
+# through `tee /icpc/self_test_report` and prints the report, and the colours
+# below only exist when stdout is a terminal (see the tput block at the top),
+# so on the copy a human actually reads, colour alone says nothing.
+if [ "$HOSTNAME" = "@icpc_default_hostname@" ]; then
+  echo "${RED}${HOSTNAME} (not set - hostnames API unreachable?)${RESET}"
+elif [[ "${HOSTNAME,,}" == unknown* ]]; then
+  # Same derivation set_hostname.sh uses, so the serial reported here is the
+  # one that needs registering.
+  ROOT_MNT="$(findmnt -n -o SOURCE / 2>/dev/null)"
+  SERIAL="$(udevadm info --name="$ROOT_MNT" 2>/dev/null | grep ID_SERIAL_SHORT | awk -F"=" '{print $2}')"
+  echo "${RED}${HOSTNAME} (serial not registered: ${SERIAL:-unreadable})${RESET}"
+else
+  echo $HOSTNAME
+fi
 print_check "Timezone"
 TIMEZONE="$(timedatectl show -p Timezone 2>/dev/null)"
-if [ $TIMEZONE = "Timezone=@icpc_timezone@" ]; then
+if [ "$TIMEZONE" = "Timezone=@icpc_timezone@" ]; then
   TIMEZONE="${GREEN}${TIMEZONE}${RESET}"
 else
   TIMEZONE="${RED}${TIMEZONE}${RESET}"

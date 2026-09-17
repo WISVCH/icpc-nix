@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   vars,
@@ -21,6 +22,11 @@ let
   self_test = pkgs.replaceVars ./files/scripts/self_test {
     inherit (vars) icpc_timezone domjudge_url;
     inherit icpc_commit icpc_committed;
+    # The hostname this image boots with - i.e. what `hostname` still reports
+    # if set_hostname.sh never replaced it, which is how self_test tells
+    # "not registered" apart from a real pc<N> name. Read from the config
+    # rather than restated, so it can't drift from base.nix.
+    icpc_default_hostname = config.networking.hostName;
   };
   set_domjudge_creds = pkgs.replaceVars ./files/scripts/set_domjudge_creds.sh {
     inherit (vars) domjudge_url;
@@ -258,6 +264,20 @@ rec {
 
   environment.variables.PATH = "/icpc/scripts/bin:$PATH";
 
+  # Deliberate, despite reading like three separate bugs: on_boot.sh ends in
+  # an interactive "Do you want to run icpc_setup? [y/N]" prompt on tty5, and
+  # that gate is the point - it holds the machine on the self-test output
+  # until a human has read it and pressed a key. Hence TimeoutSec = 0 (the
+  # wait is unbounded by design) and before = display-manager.service (the
+  # GUI must not paint over the screen being checked).
+  #
+  # What that costs, and what to keep in mind when touching anything
+  # on_boot.sh calls: a command in there that blocks forever blocks boot
+  # behind a screen indistinguishable from the intended wait. That's why
+  # set_hostname.sh's curls carry --connect-timeout/--max-time.
+  #
+  # The test suite consequently never waits for this unit to reach
+  # "active (exited)" - see tests/contestant/hostname.nix and tests/lib.nix.
   systemd.services.firstboot = {
     description = "Initial self test";
     enable = true;

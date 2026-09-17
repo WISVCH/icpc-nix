@@ -13,6 +13,12 @@
 # domjudge/module.nix) - production co-locates all three behind the same
 # judge_ip, so this mirrors that instead of standing up separate nodes.
 #
+# Also covers self_test's hostname indicator either side of that: flagged
+# while the machine is still on the hostname the image ships with, plain once
+# a real one has been fetched. It is the one self_test check with a test,
+# because it is the one that tells an operator at the firstboot gate that
+# this machine never registered.
+#
 # Deliberately not waiting on firstboot.service itself: on_boot.sh ends in
 # an interactive "Do you want to run icpc_setup?" prompt with no TTY input
 # in this VM, so the unit never reaches "active (exited)" (see the hang
@@ -22,6 +28,31 @@
   name = "hostname";
   script = ''
     import json
+
+    def self_test_hostname_line(node):
+        """The "Hostname" row of self_test's System Configuration block.
+
+        self_test only emits colour when stdout is a terminal (see its tput
+        block), and `succeed` gives it a pipe - so the indicator has to be
+        read from the text, which is also what icpc_setup.sh captures into
+        /icpc/self_test_report and prints for the team.
+        """
+        out = node.succeed("/icpc/scripts/self_test")
+        lines = [line for line in out.splitlines() if line.startswith("Hostname")]
+        assert len(lines) == 1, (
+            f"expected exactly one Hostname row in self_test output, got {lines}"
+        )
+        return lines[0]
+
+    print("Checking self_test flags the hostname before firstboot has applied one")
+    # firstboot's own first run at boot is expected to have failed (see the
+    # comment further down), so the machine is still on the hostname the
+    # image ships with - which is what icpc.nix templates in as
+    # @icpc_default_hostname@ for self_test to compare against.
+    unset_line = self_test_hostname_line(contestant)
+    assert "not set" in unset_line, (
+        f"expected self_test to flag the unset hostname, got: {unset_line!r}"
+    )
 
     print("Checking the test-only udev rule actually spoofed the root disk's serial")
     root_mnt = contestant.succeed("findmnt -n -o SOURCE /").strip()
@@ -79,6 +110,15 @@
         print(f"current hostname: {contestant.succeed('hostname').strip()}")
         print(contestant.succeed("hostnamectl status 2>&1 || true"))
         raise
+
+    print("Checking self_test now reports the fetched hostname with no warning")
+    set_line = self_test_hostname_line(contestant)
+    assert "${testHostname}" in set_line, (
+        f"expected self_test to report the fetched hostname, got: {set_line!r}"
+    )
+    assert "not set" not in set_line and "not registered" not in set_line, (
+        f"expected no hostname warning once one was fetched, got: {set_line!r}"
+    )
 
     print("Checking pdns actually got the A record set_hostname.sh PATCHed in")
     zone = server.succeed(
