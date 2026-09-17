@@ -18,6 +18,7 @@ name: Build and release image
 #   PROXMOX_SSH_USER                - scoped deploy user, see deploy/proxmox/setup.sh
 #   PROXMOX_CONSOLE_VMID            - VMID of the console staging VM
 #   PROXMOX_CONTESTANT_VMID         - VMID of the contestant staging VM
+#   PROXMOX_SERVER_VMID             - VMID of the server staging VM (303)
 #   # ATTIC_CACHE_NAME              - name of the Attic cache to push to
 #   # ATTIC_ENDPOINT                - Attic server URL (e.g. http://127.0.0.1:8080)
 #   # ATTIC_PUBLIC_KEY              - Attic cache's trusted public key
@@ -31,7 +32,7 @@ on:
   workflow_call:
     inputs:
       image:
-        description: "Flake package/nixosConfiguration to build (console or contestant)"
+        description: "Flake package/nixosConfiguration to build (console, contestant or server)"
         required: true
         type: string
       version:
@@ -131,9 +132,31 @@ jobs:
         env:
           PROXMOX_HOST: ${{ vars.PROXMOX_HOST }}
           PROXMOX_SSH_USER: ${{ vars.PROXMOX_SSH_USER }}
-          PROXMOX_VMID: ${{ inputs.image == 'console' && vars.PROXMOX_CONSOLE_VMID || vars.PROXMOX_CONTESTANT_VMID }}
+          PROXMOX_CONSOLE_VMID: ${{ vars.PROXMOX_CONSOLE_VMID }}
+          PROXMOX_CONTESTANT_VMID: ${{ vars.PROXMOX_CONTESTANT_VMID }}
+          PROXMOX_SERVER_VMID: ${{ vars.PROXMOX_SERVER_VMID }}
           PROXMOX_SSH_KEY: ${{ secrets.PROXMOX_SSH_KEY }}
         run: |
+          # Map image -> staging VMID explicitly, and fail loudly on anything
+          # unmapped. This used to be a binary ternary
+          # (image == 'console' && CONSOLE_VMID || CONTESTANT_VMID), which
+          # sent *everything* that wasn't "console" to the contestant VM -
+          # adding a third image would have silently overwritten the
+          # contestant staging disk with a server image, with no error.
+          case "${{ inputs.image }}" in
+            console)    PROXMOX_VMID="$PROXMOX_CONSOLE_VMID" ;;
+            contestant) PROXMOX_VMID="$PROXMOX_CONTESTANT_VMID" ;;
+            server)     PROXMOX_VMID="$PROXMOX_SERVER_VMID" ;;
+            *)
+              echo "::error::no staging VMID mapped for image '${{ inputs.image }}'"
+              exit 1
+              ;;
+          esac
+          if [ -z "$PROXMOX_VMID" ]; then
+            echo "::error::staging VMID for '${{ inputs.image }}' is empty - set the matching repository variable"
+            exit 1
+          fi
+
           KEYFILE="$(mktemp)"
           trap 'rm -f "$KEYFILE"' EXIT
           printf '%s\n' "$PROXMOX_SSH_KEY" > "$KEYFILE"

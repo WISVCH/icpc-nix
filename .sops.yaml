@@ -1,0 +1,13 @@
+# Routes each secrets file to the key it must be encrypted to, so
+# `sops secrets/dev.yaml` picks the right recipient with no flags.
+#
+# secrets/prod.yaml is deliberately absent: it does not exist yet, and when it
+# does its key must never be committed here. See secrets/README.md.
+creation_rules:
+  - path_regex: secrets/dev\.yaml$
+    key_groups:
+      - age:
+          # Public half of secrets/dev-age-key.txt, which is committed on
+          # purpose and shipped inside the server image. Only ever encrypt
+          # throwaway values to this.
+          - age138avexeemmtm3a2d0njjw23u2s8qrugce590gvcd6klqh4a79qzq96v9dn
