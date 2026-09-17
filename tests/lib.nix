@@ -250,7 +250,23 @@ let
       # chain) that don't need to succeed for these checks and have been
       # observed to hang boot indefinitely. Each subtest waits for exactly
       # the units it needs instead.
-      testScript = lib.concatMapStrings subtestScript subtests;
+      testScript = ''
+        # The driver otherwise boots a node lazily, on the first command
+        # addressed to it - so the three boots ran back to back (31s + 87s +
+        # 40s of a 621s suite), and the console node did not start at all
+        # until every contestant subtest had finished. Booting them together
+        # overlaps that, and lets the console's judgehost image load (see
+        # its node definition above) run while the server node is still
+        # installing DOMjudge's database.
+        #
+        # Peak memory is unchanged - all three nodes were already co-resident
+        # from judgehost-connect onwards, which is what the budgets above are
+        # sized for. Peak *CPU* during boot does rise: if mariadb's startup
+        # healthcheck starts timing out, this and that memorySize note are
+        # where to look, not a real regression.
+        start_all()
+      ''
+      + lib.concatMapStrings subtestScript subtests;
     };
 in
 {
