@@ -49,17 +49,27 @@
     # hierarchy root, which a rootless daemon can never grant).
     sudo = "sudo -u judgehost"
 
-    print("Loading the judgehost image staged in icpcadmin's home (same tarball shipped to real consoles)")
-    # -g omitted: isNormalUser accounts default to primary group "users",
-    # not a same-named group - see nixos/modules/config/users-groups.nix.
-    console.succeed(
-        "install -o judgehost "
-        "/home/icpcadmin/judgehost/judgehost.tar.gz /tmp/judgehost.tar.gz"
+    print("Checking the judgehost image staged in icpcadmin's home was loaded at boot")
+    # The load itself moved into a boot unit on this node (see
+    # load-judgehost-image in tests/lib.nix): copying and unpacking a 1.2 GiB
+    # image inline cost 218s of a 621s suite, with every other node idle. It
+    # still comes from the same tarball a real console has staged, read
+    # through the same path in icpcadmin's home.
+    console.wait_for_unit("load-judgehost-image.service")
+    load_output = console.succeed(
+        "journalctl -u load-judgehost-image.service --no-pager -o cat"
     )
-    load_output = console.succeed(f"{sudo} docker load -i /tmp/judgehost.tar.gz")
     loaded_image_match = re.search(r"Loaded image: (\S+)", load_output)
-    assert loaded_image_match, f"unexpected `docker load` output: {load_output!r}"
+    assert loaded_image_match, (
+        f"unexpected `docker load` output from the boot unit: {load_output!r}"
+    )
     judgehost_image = loaded_image_match.group(1)
+
+    # ...and that the judgehost user's own client can see it. base.nix putting
+    # judgehost in the docker group is what makes that work, and it is what a
+    # real console relies on - the assertion the inline `sudo -u judgehost
+    # docker load` used to make implicitly.
+    console.succeed(f"{sudo} docker image inspect {judgehost_image} >/dev/null")
 
     # This is the first subtest to touch "domjudge" in this suite (unlike
     # tests/contestant, where domjudge.nix already does this wait before
