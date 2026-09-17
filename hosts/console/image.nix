@@ -8,7 +8,7 @@
 # packages.* block, separately from the host entrypoint that was supposed to
 # mirror them.
 {
-  system.stateVersion = "23.11";
+  system.stateVersion = "26.05";
 
   # The raw-efi format reads this via config.virtualisation.diskSize to pick
   # the disk image size (make-disk-image.nix). It must match the size of the
