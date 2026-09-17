@@ -20,7 +20,7 @@ A physical computer on campus, outside our administrative control, that a consol
 _Avoid_: exam PC, lab machine
 
 **Shim**:
-A small, Microsoft-signed EFI binary that UEFI Secure Boot already trusts out of the box. It's the first thing Secure Boot firmware runs; shim then decides whether to trust the next stage (our GRUB/kernel/initrd) via its own embedded vendor certificate or its MOK list. We vendor a pre-built, already-signed shim (the standard practice other minimal distros use) rather than trying to get our own binary signed by Microsoft.
+A small, Microsoft-signed EFI binary that UEFI Secure Boot already trusts out of the box. It's the first thing Secure Boot firmware runs; shim then hooks the firmware's `LoadImage` call so it also decides whether to trust every subsequent EFI binary loaded afterwards (our GRUB, then the kernel GRUB hands off to via its EFI stub) via its own embedded vendor certificate or its MOK list. We vendor a pre-built, already-signed shim (the standard practice other minimal distros use) rather than trying to get our own binary signed by Microsoft.
 
 **MOK (Machine Owner Key)**:
 A certificate (or file hash) enrolled into a specific machine's own trust store by shim's MokManager tool, at boot time, with physical interactive confirmation. Distinct from UEFI firmware's own Setup Mode key management (`db`/`KEK`) — MOK enrollment works through shim/software, not firmware settings, which is why it may remain possible even when a machine's BIOS Setup Mode is locked down.
@@ -41,7 +41,7 @@ The one private signing key (and its certificate) icpc-nix controls. Held as a C
 _Avoid_: signing key
 
 **Sign-image script**:
-The post-build step that writes shim, signed GRUB/kernel/initrd, and the certificate onto an already-built raw-efi image's ESP, using the release key. `nix build` itself always produces an unsigned image; signing only happens here, and only when the release key is available.
+The post-build step that writes shim, signed GRUB, the signed kernel, and the certificate onto an already-built raw-efi image's ESP, using the release key. Not the initrd - it's never loaded via `LoadImage`, so shim never checks it; see `docs/adr/0006-sign-kernel-not-initrd.md`. `nix build` itself always produces an unsigned image; signing only happens here, and only when the release key is available.
 _Avoid_: signing step, build step (this is deliberately not part of the Nix build — see `docs/adr/0002-sign-images-post-build.md`)
 
 **Live key**:
