@@ -1,6 +1,8 @@
 { dns_zone, testHostname }:
 
-# Subtest fragment for tests/contestant/default.nix.
+# Subtest fragment. Composed by tests/lib.nix into the merged tests/all
+# suite that CI runs, and into the per-image suite for iteration - it is
+# not tied to either one.
 #
 # Regression test for set_hostname.sh actually running at boot (icpc.nix's
 # firstboot.service now runs it via the on_boot.sh call that used to be
@@ -22,14 +24,14 @@
     import json
 
     print("Checking the test-only udev rule actually spoofed the root disk's serial")
-    root_mnt = machine.succeed("findmnt -n -o SOURCE /").strip()
+    root_mnt = contestant.succeed("findmnt -n -o SOURCE /").strip()
     # The root block device's udev database entry is populated once, very
     # early in boot (before/around switch-root) - force a fresh "add" event
     # for it explicitly rather than relying on whatever coldplug pass ran
     # during boot having already picked up the rule.
-    machine.succeed(f"udevadm trigger --action=add --name-match={root_mnt}")
-    machine.succeed("udevadm settle")
-    udev_info = machine.succeed(f"udevadm info --name={root_mnt}")
+    contestant.succeed(f"udevadm trigger --action=add --name-match={root_mnt}")
+    contestant.succeed("udevadm settle")
+    udev_info = contestant.succeed(f"udevadm info --name={root_mnt}")
 
     assert "ID_SERIAL_SHORT=" in udev_info, (
         f"expected a spoofed ID_SERIAL_SHORT on {root_mnt} (see the "
@@ -42,7 +44,7 @@
     # never waits for (see domjudge.nix and the comment at the bottom of
     # default.nix) - start it directly rather than depend on it, same as
     # domjudge-selftest does.
-    machine.succeed("systemctl start network-addresses-eth1.service")
+    contestant.succeed("systemctl start network-addresses-eth1.service")
 
     # firstboot.service (icpc.nix) is a oneshot with no retry, and its own
     # organic first run happens within seconds of boot - long before
@@ -51,12 +53,12 @@
     # to fail; wait for both services to actually be ready, then force a
     # clean second run instead of racing the first one.
     print("Waiting for hostnames_api and pdns to actually be ready on the domjudge node")
-    domjudge.wait_for_unit("podman-hostnames.service")
-    domjudge.wait_for_unit("podman-pdns.service")
-    domjudge.wait_until_succeeds(
+    server.wait_for_unit("podman-hostnames.service")
+    server.wait_for_unit("podman-pdns.service")
+    server.wait_until_succeeds(
         "curl --fail --silent http://127.0.0.1:8000/hostnames/", timeout=240
     )
-    domjudge.wait_until_succeeds(
+    server.wait_until_succeeds(
         "curl --fail --silent -H 'X-API-Key: changeme' "
         "http://127.0.0.1:8081/api/v1/servers/localhost",
         timeout=60,
@@ -66,20 +68,20 @@
     # --no-block: on_boot.sh ends in the same interactive prompt mentioned
     # above, so ExecStart never returns - `systemctl restart` without this
     # would hang here forever waiting for the job to finish.
-    machine.succeed("systemctl restart --no-block firstboot.service")
+    contestant.succeed("systemctl restart --no-block firstboot.service")
 
     print("Waiting for set_hostname.sh to apply the fetched hostname")
     try:
-        machine.wait_until_succeeds(
+        contestant.wait_until_succeeds(
             'test "$(hostname)" = "${testHostname}"', timeout=60
         )
     except Exception:
-        print(f"current hostname: {machine.succeed('hostname').strip()}")
-        print(machine.succeed("hostnamectl status 2>&1 || true"))
+        print(f"current hostname: {contestant.succeed('hostname').strip()}")
+        print(contestant.succeed("hostnamectl status 2>&1 || true"))
         raise
 
     print("Checking pdns actually got the A record set_hostname.sh PATCHed in")
-    zone = domjudge.succeed(
+    zone = server.succeed(
         "curl --fail --silent -H 'X-API-Key: changeme' "
         "http://127.0.0.1:8081/api/v1/servers/localhost/zones/${dns_zone}."
     )
