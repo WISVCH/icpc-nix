@@ -29,6 +29,8 @@ let
       inherit system;
       modules = [
         ../../modules/nixos/common/boot.nix
+        # Brings in the patched cptofs that make-disk-image uses.
+        ../../modules/nixos/common/overlays.nix
         ./image.nix
       ];
     }).config.system.build.images.raw-efi;
