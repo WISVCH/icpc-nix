@@ -88,6 +88,9 @@
     in
 
     {
+      # Changes to existing nixpkgs packages; see overlays/default.nix.
+      overlays = import ./overlays { inherit lib; };
+
       # For nixos-rebuild
       nixosConfigurations = {
         console = lib.nixosSystem {
