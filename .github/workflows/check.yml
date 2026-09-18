@@ -115,3 +115,9 @@ jobs:
       # workspace, which the next run's checkout then reports removing.
       - name: Run VM tests
         run: nix build .#vm-tests -L --no-link
+
+      # A small signed image booted under OVMF Secure Boot, with a throwaway
+      # key in MokList: the shim -> GRUB -> kernel chain the release images
+      # rely on. See tests/secure-boot/default.nix.
+      - name: Secure Boot test
+        run: nix build .#secure-boot-test -L --no-link
