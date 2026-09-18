@@ -261,6 +261,13 @@
       ## derivation needs no access to the private icpc-playbooks input.
       checks.x86_64-linux.formatting = treefmtEval.config.build.check self;
 
+      ## Runs scripts/sign-image.sh against a small fixture disk with a
+      ## throwaway key, so the signing logic is exercised on every PR rather
+      ## than first in the release job. See tests/sign-image.nix.
+      checks.x86_64-linux.sign-image = import ./tests/sign-image.nix {
+        inherit pkgs shim signImage;
+      };
+
       ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";
       apps.x86_64-linux.build-signed-contestant = mkBuildSignedApp "contestant";
