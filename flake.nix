@@ -60,7 +60,9 @@
         text = ''
           export SHIM_DIR="${shim}"
           export ICPC_NIX_SIGNING_CERT="''${ICPC_NIX_SIGNING_CERT:-${./keys/icpc-nix-release.cer}}"
-          exec ${./scripts/sign-image.sh} "$@"
+          # Run through bash explicitly: the script's /usr/bin/env shebang does not
+          # resolve inside the Nix build sandbox (checks.sign-image).
+          exec ${pkgs.bash}/bin/bash ${./scripts/sign-image.sh} "$@"
         '';
       };
 
@@ -260,6 +262,13 @@
       ## `just fmt-check` - unlike the rest of `nix flake check`, this
       ## derivation needs no access to the private icpc-playbooks input.
       checks.x86_64-linux.formatting = treefmtEval.config.build.check self;
+
+      ## Runs scripts/sign-image.sh against a small fixture disk with a
+      ## throwaway key, so the signing logic is exercised on every PR rather
+      ## than first in the release job. See tests/sign-image.nix.
+      checks.x86_64-linux.sign-image = import ./tests/sign-image.nix {
+        inherit pkgs shim signImage;
+      };
 
       ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server
       apps.x86_64-linux.build-signed-console = mkBuildSignedApp "console";

@@ -108,6 +108,8 @@ fi
 echo "== ESP /kernels before signing ==" >&2
 mdir_i "::/kernels" >&2
 
+# `mdir -b` prints each entry as a full mtools path ("::/kernels/<name>"),
+# not a bare file name, so KERNEL_PATH is used as-is below.
 mapfile -t KERNEL_CANDIDATES < <(mdir_i -b "::/kernels" | grep -i 'bzimage')
 if [ "${#KERNEL_CANDIDATES[@]}" -eq 0 ]; then
   echo "error: no kernel (*bzImage*) found under /kernels on the ESP" >&2
@@ -117,19 +119,19 @@ elif [ "${#KERNEL_CANDIDATES[@]}" -gt 1 ]; then
   echo "       (this image build must be evaluating more than one boot generation - sign-image.sh only knows how to sign a single-generation image)" >&2
   exit 1
 fi
-KERNEL_NAME="${KERNEL_CANDIDATES[0]}"
+KERNEL_PATH="${KERNEL_CANDIDATES[0]}"
 
-mcopy_i "::/kernels/$KERNEL_NAME" "$WORK/kernel.unsigned"
+mcopy_i "$KERNEL_PATH" "$WORK/kernel.unsigned"
 
 sbsign --key "$ICPC_NIX_SIGNING_KEY" --cert "$ICPC_NIX_SIGNING_CERT" \
   --output "$WORK/kernel.signed" "$WORK/kernel.unsigned"
 
-mdel_i "::/kernels/$KERNEL_NAME"
-mcopy_i -o "$WORK/kernel.signed" "::/kernels/$KERNEL_NAME"
+mdel_i "$KERNEL_PATH"
+mcopy_i -o "$WORK/kernel.signed" "$KERNEL_PATH"
 
-mcopy_i "::/kernels/$KERNEL_NAME" "$WORK/kernel.verify"
+mcopy_i "$KERNEL_PATH" "$WORK/kernel.verify"
 if ! sbverify --cert "$ICPC_NIX_SIGNING_CERT" "$WORK/kernel.verify" >&2; then
-  echo "error: signature verification failed on the signed kernel ($KERNEL_NAME)" >&2
+  echo "error: signature verification failed on the signed kernel ($KERNEL_PATH)" >&2
   exit 1
 fi
 
