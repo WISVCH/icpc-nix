@@ -81,19 +81,38 @@ pkgs.runCommand "secure-boot-test"
     mcopy -i "unsigned-kernel.img@@$ESP_OFFSET" kernel.unsigned "$KERNEL_PATH"
 
     # Boots $2 with its own copy of vars.fd, recording the serial console to
-    # $1.log. A successful boot powers itself off; otherwise the timeout ends
-    # it. -snapshot keeps the disk images untouched between boots.
+    # $1.log. A successful boot powers itself off. A boot the firmware or
+    # kernel has given up on is stopped as soon as that shows up in the log,
+    # rather than left to the timeout. -snapshot keeps the disk images
+    # untouched between boots.
     boot_vm() {
-      local name="$1" disk="$2" secs="$3"
+      local name="$1" disk="$2" secs="$3" waited=0
       cp vars.fd "$name-vars.fd"
-      timeout "$secs" qemu-system-x86_64 \
+      : > "$name.log"
+      qemu-system-x86_64 \
         -enable-kvm -machine q35,smm=on -m 1024 \
         -global driver=cfi.pflash01,property=secure,value=on \
         -drive if=pflash,format=raw,unit=0,readonly=on,file=${ovmf.firmware} \
         -drive if=pflash,format=raw,unit=1,file="$name-vars.fd" \
         -drive if=virtio,format=raw,file="$disk" -snapshot \
         -display none -vga none -monitor none -no-reboot \
-        -serial file:"$name.log" || true
+        -serial file:"$name.log" &
+      local pid=$!
+      while kill -0 "$pid" 2>/dev/null; do
+        if grep -q -e "No bootable option or device was found" -e "Kernel panic" "$name.log"; then
+          echo "$name: boot gave up, stopping the VM" >&2
+          kill "$pid"
+          break
+        fi
+        if [ "$waited" -ge "$secs" ]; then
+          echo "$name: no result after ''${secs}s, stopping the VM" >&2
+          kill "$pid"
+          break
+        fi
+        sleep 2
+        waited=$((waited + 2))
+      done
+      wait "$pid" || true
       echo "===== serial console: $name =====" >&2
       cat -v "$name.log" >&2
       echo "===== end: $name =====" >&2
