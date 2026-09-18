@@ -1,4 +1,9 @@
-{ modulesPath, ... }:
+{
+  lib,
+  pkgs,
+  modulesPath,
+  ...
+}:
 
 {
   imports = [
@@ -40,6 +45,68 @@
   boot.loader.grub.device = "nodev";
   boot.loader.grub.efiSupport = true;
   boot.loader.grub.efiInstallAsRemovable = true;
+  # What shim and GRUB itself require of the GRUB image once Secure Boot is
+  # on (#84, found by tests/secure-boot):
+  #
+  # - shim refuses to start any binary without an .sbat section, even one
+  #   whose signature it accepts. grub-install only adds one when given
+  #   --sbat. The grub line's generation (5) must be at least the one in
+  #   shim's SbatLevel; nixpkgs' GRUB 2.12 carries the February 2025 CVE
+  #   fixes that generation 5 stands for.
+  # - GRUB's shim_lock verifier denies loading modules from disk
+  #   (grub-core/kern/efi/sb.c: GRUB_FILE_TYPE_GRUB_MODULE is not on its
+  #   list), so everything grub.cfg needs is built into the image instead.
+  #   The list covers what NixOS's install-grub.pl writes into grub.cfg
+  #   (search, load_env, graphics setup, linux/initrd) plus a few commands
+  #   for the GRUB shell. Anything grub.cfg insmods that is missing here
+  #   fails only under Secure Boot.
+  boot.loader.grub.extraGrubInstallArgs = [
+    "--sbat=${pkgs.writeText "grub-sbat.csv" ''
+      sbat,1,SBAT Version,sbat,1,https://github.com/rhboot/shim/blob/main/SBAT.md
+      grub,5,Free Software Foundation,grub,2.12,https://www.gnu.org/software/grub/
+      grub.icpc-nix,1,WISVCH icpc-nix,grub,2.12,https://github.com/WISVCH/icpc-nix
+    ''}"
+    (
+      "--modules="
+      + lib.concatStringsSep " " [
+        # Boot flow
+        "normal"
+        "configfile"
+        "linux"
+        "boot"
+        "gzio"
+        # Finding /boot and reading it
+        "part_gpt"
+        "part_msdos"
+        "fat"
+        "ext2"
+        "search"
+        "search_fs_uuid"
+        "search_fs_file"
+        "search_label"
+        # grub.cfg scripting and state
+        "test"
+        "echo"
+        "loadenv"
+        "sleep"
+        # Graphics setup grub.cfg does on EFI
+        "all_video"
+        "efi_gop"
+        "efi_uga"
+        "font"
+        "gfxterm"
+        "gfxterm_background"
+        "png"
+        "jpeg"
+        # GRUB shell
+        "minicmd"
+        "ls"
+        "cat"
+        "halt"
+        "reboot"
+      ]
+    )
+  ];
   fileSystems."/boot" = {
     device = "/dev/disk/by-label/ESP";
     fsType = "vfat";
