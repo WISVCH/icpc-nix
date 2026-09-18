@@ -255,6 +255,20 @@
           ;
       };
 
+      ## nix build .#secure-boot-test
+      ## Boots a small signed image under OVMF Secure Boot (shim -> GRUB ->
+      ## kernel), and checks that an unsigned kernel is refused. Needs KVM, so
+      ## CI runs it in the vm-tests job rather than `nix flake check`.
+      packages.x86_64-linux.secure-boot-test = import ./tests/secure-boot {
+        inherit
+          pkgs
+          lib
+          system
+          shim
+          signImage
+          ;
+      };
+
       ## nix fmt
       formatter.x86_64-linux = treefmtEval.config.build.wrapper;
 
