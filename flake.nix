@@ -60,7 +60,9 @@
         text = ''
           export SHIM_DIR="${shim}"
           export ICPC_NIX_SIGNING_CERT="''${ICPC_NIX_SIGNING_CERT:-${./keys/icpc-nix-release.cer}}"
-          exec ${./scripts/sign-image.sh} "$@"
+          # Run through bash explicitly: the script's /usr/bin/env shebang does not
+          # resolve inside the Nix build sandbox (checks.sign-image).
+          exec ${pkgs.bash}/bin/bash ${./scripts/sign-image.sh} "$@"
         '';
       };
 
