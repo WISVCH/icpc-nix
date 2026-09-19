@@ -1,7 +1,7 @@
 {
   config,
-  pkgs,
   lib,
+  languages,
   ...
 }:
 
@@ -12,6 +12,6 @@ in
   options.modules.contestant.languages.kotlin.enable = lib.mkEnableOption "Kotlin toolchain";
 
   config = lib.mkIf (cfg.enable && cfg.kotlin.enable) {
-    environment.systemPackages = [ pkgs.kotlin ];
+    environment.systemPackages = languages.kotlin.packages ++ languages.kotlin.commands;
   };
 }

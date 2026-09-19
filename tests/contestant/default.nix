@@ -4,6 +4,7 @@
   inputs,
   system,
   vars,
+  languages,
 }:
 
 # Contestant image only, against the shared server node - the short loop for
@@ -21,6 +22,7 @@ let
       inputs
       system
       vars
+      languages
       ;
   };
 in
