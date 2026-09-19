@@ -106,31 +106,6 @@ if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
     . /etc/bash_completion
 fi
 
-# compiler commands
-mygcc() {
-        gcc -std=gnu17 -x c -Wall -O2 -static -pipe -o $1 "$1.c" -lm
-}
-
-mygpp() {
-        g++ -std=gnu++20 -x c++ -Wall -O2 -static -pipe -o $1 "$1.cpp" -lm
-}
-
-myjavac() {
-        javac -encoding UTF-8 -sourcepath . -d . $@
-}
-
-myjava() {
-        java -Dfile.encoding=UTF-8 -XX:+UseSerialGC -Xss65536k -Xms1966080k -Xmx1966080k $@
-}
-
-mypython() {
-        pypy3 $@
-}
-
-mykotlinc() {
-      	kotlinc -d . $@
-}
-
-mykotlin() {
-        kotlin -Dfile.encoding=UTF-8 -J-XX:+UseSerialGC -J-Xss65536k -J-Xms1966080k -J-Xmx1966080k $@
-}
+# mygcc, mygpp, myjavac, myjava, mykotlinc, mykotlin and mypython are
+# commands on PATH, generated from icpc-nix's languages.nix together with
+# the toolchains they run.

@@ -4,6 +4,7 @@
   inputs,
   system,
   vars,
+  languages,
 }:
 
 # The suite CI runs: all three images booted once, against one DOMjudge.
@@ -25,6 +26,7 @@ let
       inputs
       system
       vars
+      languages
       ;
   };
 in

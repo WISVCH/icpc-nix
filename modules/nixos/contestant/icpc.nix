@@ -35,14 +35,11 @@ let
     inherit (vars) hostnames_api dns_api dns_zone;
   };
 
-  # set_teamname.sh needs Pango-markup escaping (gi.repository.GLib), but
-  # scripts.nix's plain `python3` in environment.systemPackages has no
-  # site-packages wired up for the separate python3Packages.* entries listed
-  # alongside it (a common NixOS pitfall - they don't merge into a bare
-  # interpreter's importable packages), so `import gi` fails there. Giving
-  # this script its own self-contained wrapped interpreter sidesteps that
-  # entirely, without touching the shared systemPackages python3 (avoiding a
-  # bin/python3 collision with compilers.nix's separate plain `python3`).
+  # set_teamname.sh needs Pango-markup escaping (gi.repository.GLib). The
+  # contestant `python3` on PATH is languages.nix's bare pinned interpreter,
+  # with no site-packages, so `import gi` fails there. Giving this script its
+  # own self-contained wrapped interpreter sidesteps that entirely, without
+  # adding a second bin/python3 to environment.systemPackages.
   escapeMarkup =
     pkgs.writers.writePython3Bin "escape-markup"
       {
@@ -254,12 +251,7 @@ rec {
       };
       target = "disable-turboboost_ht";
     };
-    submit-client = {
-      source = pkgs.fetchurl {
-        url = "https://github.com/DOMjudge/domjudge/raw/main/submit/submit";
-        sha256 = "sha256-qi8ETjPiXeWU/24i+s6mYAcUi8R+mUo8ut9JbzNEBx4=";
-      };
-    };
+    # submit-client: see scripts.nix, which also installs it.
   };
 
   environment.variables.PATH = "/icpc/scripts/bin:$PATH";

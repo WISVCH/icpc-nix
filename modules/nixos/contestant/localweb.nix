@@ -2,6 +2,7 @@
   pkgs,
   lib,
   vars,
+  languages,
   ...
 }:
 
@@ -56,17 +57,18 @@ let
     hash = "sha256-QaxZ0bNyEOrW4CXhtCAWncy4AdUA1mUPHsv0bNZyn8o=";
   };
 
-  # docs.python.org has no patch-pinned archive for 3.14 yet (matching this
-  # image's actual python3 version), only this rolling, unversioned zip -
-  # bump the hash here if upstream republishes it and the fetch starts
-  # failing. PyPy3 has no separate stdlib doc set; it reuses this.
-  # The archive has many top-level entries (index.html, library/, etc.), not
-  # one, so fetchzip's default stripRoot would refuse it.
-  python3Docs = pkgs.fetchzip {
-    url = "https://docs.python.org/3.14/archives/python-3.14-docs-html.zip";
-    hash = "sha256-0JhSkxOfPG505vP0DSwHkSqJq3hpbTqfQi3TyVKFNzM=";
-    stripRoot = false;
-  };
+  # For the contestant python3 languages.nix pins, from python.org's
+  # per-release archive (immutable, unlike docs.python.org's rolling zip,
+  # which got republished under this hash more than once). PyPy3 has no
+  # separate stdlib doc set; it reuses this, at the same language level.
+  python3Docs =
+    let
+      version = languages.pins.python311;
+    in
+    pkgs.fetchzip {
+      url = "https://www.python.org/ftp/python/doc/${version}/python-${version}-docs-html.zip";
+      hash = "sha256-XZy7cfSqDpQm8Z7r2dNW2CShXrAN7/MJjNkojeAr77U=";
+    };
 
   docsIndex = pkgs.replaceVars ./files/docs-index.html {
     inherit (vars) domjudge_url;
