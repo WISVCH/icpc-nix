@@ -3,6 +3,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
@@ -20,7 +21,7 @@
 # the sops decryption path, the firewall - is exercised exactly as production
 # has it.
 let
-  images = import ../../modules/nixos/server/images.nix { inherit pkgs; };
+  images = import ../../modules/nixos/server/images.nix { inherit pkgs inputs; };
 
 in
 {

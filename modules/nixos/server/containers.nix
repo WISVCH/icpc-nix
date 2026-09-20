@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  inputs,
+  ...
+}:
 
 # domserver + mariadb + chipcie-dns as OCI containers.
 #
@@ -10,7 +15,7 @@
 # The images themselves, with their pinned digests, live in ./images.nix so
 # tests/ can reference the same derivations without restating a digest.
 let
-  images = import ./images.nix { inherit pkgs; };
+  images = import ./images.nix { inherit pkgs inputs; };
 in
 {
   virtualisation.podman.enable = true;

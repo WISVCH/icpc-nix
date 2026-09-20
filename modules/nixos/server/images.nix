@@ -1,13 +1,11 @@
-{ pkgs }:
+{ pkgs, inputs }:
 
-# The container images the server host runs, pinned by digest.
+# The container images the server host runs.
 #
 # Split out of ./containers.nix so tests/ can reference the same derivations
 # without restating a digest: tests/server/module.nix loads all four up front
 # rather than letting each container unit load its own (see the comment
-# there), and needs the paths to do it. The follow-up in issue #74 is to build
-# these *from* WISVCH/domjudge-packaging as a flake input instead of pulling
-# fixed digests; when that happens, it happens here.
+# there), and needs the paths to do it.
 {
   mariadb = pkgs.dockerTools.pullImage {
     imageName = "mariadb";
@@ -17,13 +15,13 @@
     finalImageTag = "11";
   };
 
-  domserver = pkgs.dockerTools.pullImage {
-    imageName = "ghcr.io/wisvch/domjudge-packaging/domserver";
-    imageDigest = "sha256:00b90f5e84b04aeb2cad4ed27a61e64c624c771a2687badfd5e1b09e3fc08a46";
-    sha256 = "sha256-DmYsEara2YM++kz60qfuCwkXZRrBwW7tcajYK5Sc+yE=";
-    finalImageName = "ghcr.io/wisvch/domjudge-packaging/domserver";
-    finalImageTag = "packaging-e8150e1";
-  };
+  # Not a digest pasted in here: domjudge-packaging's CI records the image
+  # it pushed, built from the DOMjudge version that repository pins, and the
+  # judgehost is built from that same pin (see
+  # modules/home-manager/icpcadmin/judgehost-image.nix). Bumping the input
+  # therefore moves domserver and judgehost together, which is the other
+  # half of #74.
+  domserver = inputs.domjudge-packaging.images.x86_64-linux.domserver;
 
   # Built from chipcie-dns's own Dockerfiles by its build-images workflow
   # (WISVCH/chipcie-dns#10) - that repo is private, but these two packages

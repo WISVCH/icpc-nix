@@ -1,5 +1,26 @@
 {
   "nodes": {
+    "domjudge-packaging": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789900678,
+        "narHash": "sha256-4rGXkonbhgKljlMG1fL4Wv8Bt3H+DKcq9vRmV7KUpS0=",
+        "owner": "WISVCH",
+        "repo": "domjudge-packaging",
+        "rev": "86f5d22244ab8c24e6f3a436d38854fe9fa453a7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "WISVCH",
+        "ref": "07joshua03/nix-judgehost",
+        "repo": "domjudge-packaging",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -70,6 +91,7 @@
     },
     "root": {
       "inputs": {
+        "domjudge-packaging": "domjudge-packaging",
         "home-manager": "home-manager",
         "multiverse": "multiverse",
         "nixpkgs": "nixpkgs",

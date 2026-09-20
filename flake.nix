@@ -20,6 +20,18 @@
     # see ./languages.nix. Has no inputs of its own, so nothing to follow.
     multiverse.url = "github:fzakaria/nixpkgs-multiverse";
 
+    # The judgehost image is built from this rather than pulled by digest,
+    # with the toolchains ./languages.nix pins - so judgehost and contestant
+    # compile with the same derivations (#74). It also carries the domserver
+    # image CI built from the same DOMjudge, see modules/nixos/server/images.nix.
+    #
+    # TODO: back to the default branch once WISVCH/domjudge-packaging#16 is
+    # merged.
+    domjudge-packaging = {
+      url = "github:WISVCH/domjudge-packaging/07joshua03/nix-judgehost";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Repo-wide formatting; config lives in ./treefmt.nix.
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -306,6 +318,13 @@
       ## evaluation - nothing is built. See tests/languages.nix.
       checks.x86_64-linux.languages = import ./tests/languages.nix {
         inherit pkgs languages;
+      };
+
+      ## The judging chroot and the contestant image must hold the same
+      ## toolchain derivations, not just the same versions. Pure evaluation.
+      ## See tests/judgehost-toolchains.nix.
+      checks.x86_64-linux.judgehost-toolchains = import ./tests/judgehost-toolchains.nix {
+        inherit pkgs inputs languages;
       };
 
       ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server
