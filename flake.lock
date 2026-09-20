@@ -21,6 +21,21 @@
         "type": "github"
       }
     },
+    "multiverse": {
+      "locked": {
+        "lastModified": 1789806947,
+        "narHash": "sha256-0fYLap4eEdcV/6rTh0nm3T5c0noA1dHbd3rQJregZQ8=",
+        "owner": "fzakaria",
+        "repo": "nixpkgs-multiverse",
+        "rev": "863e023b5c57b0fd0690ac2f51a6dc21c73b21e4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fzakaria",
+        "repo": "nixpkgs-multiverse",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1788921488,
@@ -56,6 +71,7 @@
     "root": {
       "inputs": {
         "home-manager": "home-manager",
+        "multiverse": "multiverse",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sops-nix": "sops-nix",

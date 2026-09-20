@@ -1,7 +1,7 @@
 {
   config,
-  pkgs,
   lib,
+  languages,
   ...
 }:
 
@@ -12,6 +12,6 @@ in
   options.modules.contestant.languages.java.enable = lib.mkEnableOption "Java toolchain";
 
   config = lib.mkIf (cfg.enable && cfg.java.enable) {
-    environment.systemPackages = [ pkgs.zulu17 ];
+    environment.systemPackages = languages.java.packages ++ languages.java.commands;
   };
 }

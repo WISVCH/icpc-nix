@@ -16,6 +16,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Judged language toolchains at exact versions, from any nixpkgs revision;
+    # see ./languages.nix. Has no inputs of its own, so nothing to follow.
+    multiverse.url = "github:fzakaria/nixpkgs-multiverse";
+
     # Repo-wide formatting; config lives in ./treefmt.nix.
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -38,6 +42,7 @@
       vars = import ./vars.nix { };
       pkgs = import nixpkgs { inherit system; };
       pkgs-unstable = import nixpkgs-unstable { inherit system; };
+      languages = import ./languages.nix { multiverse = inputs.multiverse.multiverse.${system}; };
 
       treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
 
@@ -102,6 +107,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -118,6 +124,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -134,6 +141,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -153,6 +161,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -179,6 +188,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -205,6 +215,7 @@
               system
               vars
               pkgs-unstable
+              languages
               ;
           };
           modules = [
@@ -233,6 +244,7 @@
           inputs
           system
           vars
+          languages
           ;
       };
 
@@ -244,6 +256,7 @@
           inputs
           system
           vars
+          languages
           ;
       };
 
@@ -255,6 +268,7 @@
           inputs
           system
           vars
+          languages
           ;
       };
 
@@ -285,6 +299,13 @@
       ## than first in the release job. See tests/sign-image.nix.
       checks.x86_64-linux.sign-image = import ./tests/sign-image.nix {
         inherit pkgs shim signImage;
+      };
+
+      ## Holds languages.nix to its own promises: one nixpkgs revision, and
+      ## every version it states is the version that revision ships. Pure
+      ## evaluation - nothing is built. See tests/languages.nix.
+      checks.x86_64-linux.languages = import ./tests/languages.nix {
+        inherit pkgs languages;
       };
 
       ## nix run .#build-signed-console / .#build-signed-contestant / .#build-signed-server

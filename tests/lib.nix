@@ -4,6 +4,7 @@
   inputs,
   system,
   vars,
+  languages,
 }:
 
 # Shared wiring for every suite under tests/: the node definitions, the
@@ -251,6 +252,7 @@ let
         vars
         ;
     })
+    (import ./contestant/languages.nix { inherit languages; })
   ];
 
   consoleSubtests = [
@@ -273,7 +275,12 @@ let
       inherit name globalTimeout nodes;
 
       node.specialArgs = {
-        inherit self inputs system;
+        inherit
+          self
+          inputs
+          system
+          languages
+          ;
         vars = testVars;
       };
       # modules/nixos/common sets nixpkgs.config.allowUnfree, which
