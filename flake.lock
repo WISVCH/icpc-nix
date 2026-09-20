@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789900678,
-        "narHash": "sha256-4rGXkonbhgKljlMG1fL4Wv8Bt3H+DKcq9vRmV7KUpS0=",
+        "lastModified": 1789901713,
+        "narHash": "sha256-dQvMW+Wst/I2QBRw8tyMWOHU0zjMJxDBzQdR1hUIamE=",
         "owner": "WISVCH",
         "repo": "domjudge-packaging",
-        "rev": "86f5d22244ab8c24e6f3a436d38854fe9fa453a7",
+        "rev": "7b8346edf6cdd5f68a3adc0e64f68f386cc7dbd0",
         "type": "github"
       },
       "original": {
