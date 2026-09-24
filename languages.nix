@@ -85,6 +85,21 @@ let
 in
 {
   inherit pins plan;
+
+  # What the judgehost image's chroot is built from
+  # (modules/home-manager/icpcadmin/judgehost.nix): the judged toolchains,
+  # deduplicated, without the contestant-only extras. Taken from the
+  # packages above rather than from the languages below, which would need
+  # `rec` - and there the `kotlin` attribute shadows the package of that
+  # name, so the language would silently contain itself.
+  # checks.judgehost-toolchains rejects a language judged by anything that
+  # is not in here.
+  judgedPackages = p.lib.unique [
+    gcc
+    jdk
+    kotlin
+    p.pypy311
+  ];
   # Each pinned attribute as the revision actually ships it, for
   # checks.languages to compare against `pins`.
   resolved = builtins.mapAttrs (attr: _: p.${attr}) pins;

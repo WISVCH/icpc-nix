@@ -99,10 +99,11 @@ let
     # Load the judgehost image that icpcadmin's home stages
     # (modules/home-manager/icpcadmin/judgehost-image.nix) during boot rather
     # than from the test script. It was the single most expensive thing the
-    # suite did: 1.2 GiB compressed, and dockerTools.pullImage writes a
-    # docker-archive, which is uncompressed - so the script spent 143s copying
-    # it into the VM and another 75s unpacking it, 218s of a 621s run, with
-    # both already-booted nodes sitting idle throughout.
+    # suite did: the script spent 143s copying a 1.2 GiB image into the VM
+    # and another 75s unpacking it, 218s of a 621s run, with both
+    # already-booted nodes sitting idle throughout. (The image is built by
+    # Nix now rather than pulled - see judgehost-image.nix - so it arrives
+    # gzipped, but it is the same order of size.)
     #
     # As a boot unit it overlaps the server node's database install instead
     # (see start_all() in mkSuite). Test-only on purpose: issue #54 settled
