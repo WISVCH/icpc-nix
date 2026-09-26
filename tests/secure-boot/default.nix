@@ -14,9 +14,17 @@
 # MokList in the OVMF variable store, which stands in for enrolling
 # EFI/keys/icpc-nix.cer through MokManager on real hardware.
 #
-# Two boots, same image except for the kernel:
-#   - signed:          sign-image output as-is; must reach userspace with
+# Three boots of the same image:
+#   - signed:          sign-image output as-is, on a virtio disk - what the
+#                      Proxmox staging VMs are; must reach userspace with
 #                      SecureBoot=1.
+#   - signed-usb:      the same image behind an emulated xHCI controller as a
+#                      USB mass-storage device - what a flashed contest stick
+#                      is; must also reach userspace. This is what covers the
+#                      initrd's usb_storage/uas modules
+#                      (modules/nixos/common/boot.nix): without them stage 1
+#                      never finds the root label on a stick, which is how #7
+#                      failed on real hardware while every virtio boot passed.
 #   - unsigned-kernel: GRUB still signed, the original unsigned kernel put
 #                      back; must NOT start the kernel. This is the claim
 #                      behind signing the kernel at all (0fd70fa,
@@ -83,12 +91,31 @@ pkgs.runCommand "secure-boot-test"
     mcopy -i "unsigned-kernel.img@@$ESP_OFFSET" kernel.unsigned "$KERNEL_PATH"
 
     # Boots $2 with its own copy of vars.fd, recording the serial console to
-    # $1.log. A successful boot powers itself off. A boot the firmware or
-    # kernel has given up on is stopped as soon as that shows up in the log,
-    # rather than left to the timeout. -snapshot keeps the disk images
-    # untouched between boots.
+    # $1.log. $4 picks how the disk is attached - virtio (the default) or usb,
+    # which is the only difference between the signed and signed-usb boots. A
+    # successful boot powers itself off. A boot the firmware or kernel has
+    # given up on is stopped as soon as that shows up in the log, rather than
+    # left to the timeout. -snapshot keeps the disk images untouched between
+    # boots.
     boot_vm() {
-      local name="$1" disk="$2" secs="$3" waited=0
+      local name="$1" disk="$2" secs="$3" attach="''${4:-virtio}" waited=0
+      local -a diskargs
+      case "$attach" in
+        virtio)
+          diskargs=(-drive "if=virtio,format=raw,file=$disk")
+          ;;
+        usb)
+          diskargs=(
+            -device qemu-xhci,id=xhci
+            -drive "if=none,id=usbdisk,format=raw,file=$disk"
+            -device usb-storage,bus=xhci.0,drive=usbdisk
+          )
+          ;;
+        *)
+          echo "boot_vm: unknown disk attachment: $attach" >&2
+          exit 1
+          ;;
+      esac
       cp vars.fd "$name-vars.fd"
       : > "$name.log"
       qemu-system-x86_64 \
@@ -96,7 +123,7 @@ pkgs.runCommand "secure-boot-test"
         -global driver=cfi.pflash01,property=secure,value=on \
         -drive if=pflash,format=raw,unit=0,readonly=on,file=${ovmf.firmware} \
         -drive if=pflash,format=raw,unit=1,file="$name-vars.fd" \
-        -drive if=virtio,format=raw,file="$disk" -snapshot \
+        "''${diskargs[@]}" -snapshot \
         -display none -vga none -monitor none -no-reboot \
         -serial file:"$name.log" &
       local pid=$!
@@ -130,6 +157,15 @@ pkgs.runCommand "secure-boot-test"
       exit 1
     fi
 
+    # Same signed image, same Secure Boot chain, attached the way a flashed
+    # stick is. Runs after the virtio boot so a failure here points at the USB
+    # path specifically rather than at the image.
+    boot_vm signed-usb signed.img 600 usb
+    if ! grep -q "SECURE-BOOT-TEST: reached userspace, SecureBoot=1" signed-usb.log; then
+      echo "FAIL: the signed image did not reach userspace when attached as a USB mass-storage device" >&2
+      exit 1
+    fi
+
     boot_vm unsigned-kernel unsigned-kernel.img 180
     if grep -q -e "SECURE-BOOT-TEST" -e "Linux version" unsigned-kernel.log; then
       echo "FAIL: an unsigned kernel behind a signed GRUB was started under Secure Boot" >&2
@@ -137,5 +173,5 @@ pkgs.runCommand "secure-boot-test"
     fi
 
     mkdir -p "$out"
-    cp signed.log unsigned-kernel.log "$out"/
+    cp signed.log signed-usb.log unsigned-kernel.log "$out"/
   ''
