@@ -14,6 +14,26 @@
     (modulesPath + "/profiles/qemu-guest.nix")
   ];
 
+  # The other half of that: these images also boot off a flashed USB stick on
+  # exam-room hardware, and stage 1 has to find the same root label there.
+  # nixpkgs' default initrd modules (nixos/modules/system/boot/kernel.nix,
+  # includeDefaultModules) carry the USB host controllers, usbhid and sd_mod -
+  # those are there for USB keyboards - but neither driver that binds a
+  # mass-storage interface, so a flashed stick enumerates and then never
+  # becomes a block device: stage 1 waits for /dev/disk/by-label/nixos
+  # (hosts/*/hardware-configuration.nix) until it gives up. Seen on real
+  # hardware while testing #7; CI never caught it because tests/secure-boot
+  # attached the image as a virtio disk.
+  #
+  # usb_storage drives bulk-only sticks, uas the USB 3 UASP ones - both, since
+  # which one a given stick binds is not ours to choose. Note that
+  # hardware.enableAllHardware is not a superset of this: it lists uas but not
+  # usb_storage.
+  boot.initrd.availableKernelModules = [
+    "usb_storage"
+    "uas"
+  ];
+
   boot.kernelParams = [
     "console=tty0"
     "consoleblank=0"
